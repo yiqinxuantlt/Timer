@@ -1,0 +1,28 @@
+- generic [ref=f4e4]:
+  - generic [ref=f4e10]:
+    - generic [ref=f4e11]: 00:00:00
+    - generic [ref=f4e12]: ready
+  - generic [ref=f4e13]:
+    - generic [ref=f4e14]: subject
+    - textbox "学习科目" [ref=f4e15]:
+      - /placeholder: 输入科目名称
+      - text: 学习
+  - generic [ref=f4e16]:
+    - button "开始" [ref=f4e42] [cursor=pointer]
+    - button "暂停" [disabled] [ref=f4e20]
+    - button "停止" [disabled] [ref=f4e24]
+  - generic [ref=f4e27]:
+    - generic [ref=f4e28]:
+      - generic [ref=f4e29]: today
+      - generic [ref=f4e30]: 0m
+    - generic [ref=f4e32]:
+      - generic [ref=f4e33]: streak
+      - generic [ref=f4e34]: 1 天
+  - generic [ref=f4e35]:
+    - button "展开历史记录" [ref=f4e36] [cursor=pointer]:
+      - generic [ref=f4e37]: history
+    - generic [ref=f4e43]:
+      - generic [ref=f4e44]:
+        - generic [ref=f4e45]: 2026/07/13
+        - generic [ref=f4e46]: 学习
+      - generic [ref=f4e47]: 0m

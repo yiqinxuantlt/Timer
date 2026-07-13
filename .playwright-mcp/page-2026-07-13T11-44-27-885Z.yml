@@ -1,0 +1,49 @@
+- generic [ref=e4]:
+  - generic [ref=e10]:
+    - generic [ref=e11]: 00:00:40
+    - generic [ref=e12]: focusing
+  - generic [ref=e13]:
+    - generic [ref=e14]: subject
+    - textbox "学习科目" [disabled] [ref=e15]:
+      - /placeholder: 输入科目名称
+      - text: 数学
+  - generic [ref=e16]:
+    - generic [ref=e17]: 目标时长
+    - generic [ref=e18]:
+      - button "设置目标时长为 15m" [disabled] [ref=e19]: 15m
+      - button "设置目标时长为 25m" [disabled] [ref=e20]: 25m
+      - button "设置目标时长为 30m" [disabled] [ref=e21]: 30m
+      - button "设置目标时长为 45m" [disabled] [ref=e22]: 45m
+      - button "设置目标时长为 1h" [disabled] [ref=e23]: 1h
+      - button "设置目标时长为 1.5h" [disabled] [ref=e24]: 1.5h
+      - button "设置目标时长为 2h" [disabled] [ref=e25]: 2h
+  - generic [ref=e26]:
+    - button "开始" [disabled] [ref=e67]
+    - button "暂停" [ref=e30] [cursor=pointer]
+    - button "停止" [ref=e34] [cursor=pointer]
+  - generic [ref=e37]:
+    - generic [ref=e38]:
+      - generic [ref=e39]: today
+      - generic [ref=e40]: 1m
+    - generic [ref=e42]:
+      - generic [ref=e43]: streak
+      - generic [ref=e44]: 1 天
+  - generic [ref=e45]:
+    - button "展开历史记录" [ref=e46] [cursor=pointer]:
+      - generic [ref=e47]: history
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e53]: 07/13 19:30
+          - generic [ref=e54]: 学习
+        - generic [ref=e55]: 0m
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]: 07/13 19:17
+          - generic [ref=e59]: 学习
+        - generic [ref=e60]: 0m
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - generic [ref=e63]: 07/13 19:01
+          - generic [ref=e64]: 学习
+        - generic [ref=e65]: 0m

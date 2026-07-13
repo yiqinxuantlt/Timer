@@ -1,0 +1,109 @@
+.container {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.bgCircle {
+  fill: none;
+  stroke: rgba(99, 102, 241, 0.15);
+  stroke-width: 4;
+}
+
+.progressCircle {
+  fill: none;
+  stroke: url(#progressGradient);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--duration-normal) var(--ease-out);
+  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4));
+}
+
+.progressCircleRunning {
+  stroke: url(#progressGradientActive);
+  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.progressCircleCompleted {
+  stroke: url(#progressGradientCompleted);
+  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.8));
+  animation: completePop 0.5s var(--ease-out);
+}
+
+/* Pulse glow animation for running state */
+@keyframes pulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
+    stroke-width: 4;
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.9));
+    stroke-width: 4.5;
+  }
+}
+
+/* Completion pop animation */
+@keyframes completePop {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Background circle subtle breathing */
+.bgCircle {
+  animation: bgBreath 4s ease-in-out infinite;
+}
+
+@keyframes bgBreath {
+  0%, 100% {
+    stroke: rgba(99, 102, 241, 0.15);
+  }
+  50% {
+    stroke: rgba(99, 102, 241, 0.25);
+  }
+}
+
+/* Compact mode */
+.containerCompact {
+  width: 80px;
+  height: 80px;
+}
+
+.containerCompact svg {
+  width: 80px;
+  height: 80px;
+}
+
+.containerCompact .progressCircleRunning {
+  animation: pulseGlowCompact 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlowCompact {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
+    stroke-width: 4;
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(99, 102, 241, 0.9));
+    stroke-width: 4.5;
+  }
+}

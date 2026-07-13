@@ -4,13 +4,13 @@ import { useTimerStore, useElapsed, useProgress } from './stores/timerStore';
 import { useStatsStore } from './stores/statsStore';
 import TitleBar from './components/TitleBar';
 import TimerRing from './components/TimerRing';
-import TimerDisplay from './components/TimerDisplay';
 import SubjectInput from './components/SubjectInput';
 import DurationSelector from './components/DurationSelector';
 import Controls from './components/Controls';
 import StatsCard from './components/StatsCard';
 import HistoryPanel from './components/HistoryPanel';
 import CompactTimer from './components/CompactTimer';
+import SettingsPanel from './components/SettingsPanel';
 import { isTauri } from './lib/platform';
 
 function App() {
@@ -21,6 +21,7 @@ function App() {
   const { compactMode, alwaysOnTop, globalShortcutsEnabled } = useSettingsStore();
   const [, setTick] = useState(0);
   const [inTauri, setInTauri] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Initialize Tauri detection
   useEffect(() => {
@@ -131,7 +132,7 @@ function App() {
       if (elapsed >= targetDuration) {
         useTimerStore.getState().complete();
       }
-    }, 100);
+    }, 250);
 
     return () => clearInterval(interval);
   }, [status]);
@@ -237,12 +238,11 @@ function App() {
 
   return (
     <div className={containerClass}>
-      <TitleBar />
+      <TitleBar onOpenSettings={() => setSettingsOpen(true)} />
 
       <div className="main-content">
         <div className="timer-section">
-          <TimerRing progress={progress} status={status} />
-          <TimerDisplay elapsed={elapsed} status={status} />
+          <TimerRing progress={progress} status={status} elapsed={elapsed} />
         </div>
 
         <SubjectInput />
@@ -251,6 +251,8 @@ function App() {
         <StatsCard />
         <HistoryPanel />
       </div>
+
+      <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

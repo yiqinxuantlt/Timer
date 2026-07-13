@@ -29,16 +29,69 @@
   filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4));
 }
 
+/* 运行状态：覆盖颜色、阴影和动画 */
 .progressCircleRunning {
   stroke: url(#progressGradientActive);
   filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
   animation: pulseGlow 2s ease-in-out infinite;
 }
 
+/* 完成状态：覆盖颜色、阴影和动画 */
 .progressCircleCompleted {
   stroke: url(#progressGradientCompleted);
   filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.8));
   animation: completePop 0.5s var(--ease-out);
+}
+
+/* 圆环内部内容 */
+.innerContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  pointer-events: none;
+}
+
+.innerTime {
+  font-size: 36px;
+  font-weight: var(--weight-normal);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.innerLabel {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-transform: lowercase;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+}
+
+.innerLabelRunning {
+  color: var(--accent-tertiary);
+  animation: labelPulse 2s ease-in-out infinite;
+}
+
+.innerLabelPaused {
+  color: var(--warning);
+}
+
+.innerLabelCompleted {
+  color: var(--success);
+}
+
+@keyframes labelPulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Pulse glow animation for running state */

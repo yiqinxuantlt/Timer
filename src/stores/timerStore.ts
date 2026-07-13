@@ -217,11 +217,18 @@ export function formatElapsed(ms: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// Helper: format elapsed ms to short form (e.g. "1h 30m")
+// Helper: format elapsed ms to short form (e.g. "1h 30m", "42s")
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  const s = totalSeconds % 60;
+
+  if (h > 0) {
+    return `${h}h ${m}m`;
+  }
+  if (m > 0) {
+    return `${m}m ${s}s`;
+  }
+  return `${s}s`;
 }

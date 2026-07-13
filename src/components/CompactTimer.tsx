@@ -41,7 +41,7 @@ function CompactTimer() {
       {/* Mini title bar */}
       <div className={styles.titleBar} data-tauri-drag-region>
         <span className={styles.titleLabel} data-tauri-drag-region>
-          focus
+          专注
         </span>
         <div className={styles.titleControls}>
           <button

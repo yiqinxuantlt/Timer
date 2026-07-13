@@ -10,10 +10,10 @@ interface TimerDisplayProps {
 }
 
 const STATUS_LABELS: Record<TimerStatus, string> = {
-  IDLE: 'ready',
-  RUNNING: 'focusing',
-  PAUSED: 'paused',
-  COMPLETED: 'completed',
+  IDLE: '准备开始',
+  RUNNING: '专注中',
+  PAUSED: '已暂停',
+  COMPLETED: '已完成',
 };
 
 const LABEL_CLASSES: Record<TimerStatus, string> = {

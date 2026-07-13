@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json is committed for reproducible builds
 
 # Build outputs
 dist/
@@ -9,7 +9,7 @@ dist-ssr/
 
 # Rust
 target/
-Cargo.lock
+# Cargo.lock is committed for reproducible builds
 
 # Tauri
 src-tauri/target/

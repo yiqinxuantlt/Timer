@@ -33,7 +33,6 @@ function DurationSelector() {
 
   return (
     <div className={styles.container}>
-      <label className={styles.label}>目标时长</label>
       <div className={styles.options}>
         {PRESET_DURATIONS.map((option) => (
           <button

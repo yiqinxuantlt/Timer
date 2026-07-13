@@ -3,9 +3,10 @@
   align-items: center;
   justify-content: space-between;
   height: 36px;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3) 0 var(--space-4);
   border-bottom: 1px solid var(--glass-border);
   user-select: none;
+  flex-shrink: 0;
 }
 
 .left {
@@ -18,13 +19,12 @@
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-secondary);
-  text-transform: lowercase;
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .button {
@@ -49,6 +49,15 @@
 .button:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+.buttonActive {
+  color: var(--accent-primary);
+}
+
+.buttonActive:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-tertiary);
 }
 
 .closeButton:hover {

@@ -23,6 +23,7 @@ interface StatsState {
   // Actions
   addSession: (session: Omit<FocusSession, 'id'>) => void;
   deleteSession: (id: string) => void;
+  clearAllSessions: () => void;
   loadFromStorage: () => Promise<void>;
 }
 
@@ -45,7 +46,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       return { sessions, todayTotal, currentStreak };
     });
 
-    // Persist sessions (localStorage always, Tauri backend if available)
+    // 仅持久化到 Tauri 后端（权威数据源）
     persistSessions(get().sessions);
   },
 
@@ -60,6 +61,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     persistSessions(get().sessions);
   },
 
+  clearAllSessions: () => {
+    set({ sessions: [], todayTotal: 0, currentStreak: 0 });
+    persistSessions([]);
+  },
+
   loadFromStorage: async () => {
     try {
       const sessions = await loadSessionsFromBackend();
@@ -71,23 +77,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       });
     } catch (error) {
       console.error('Failed to load sessions:', error);
-      // Fallback: try localStorage
-      try {
-        const local = localStorage.getItem('study-timer-sessions');
-        if (local) {
-          const sessions: FocusSession[] = JSON.parse(local);
-          set({
-            sessions,
-            todayTotal: recalculateTodayTotal(sessions),
-            currentStreak: recalculateStreak(sessions),
-            loaded: true,
-          });
-        } else {
-          set({ loaded: true });
-        }
-      } catch {
-        set({ loaded: true });
-      }
+      set({ loaded: true });
     }
   },
 }));
@@ -204,17 +194,13 @@ interface SessionRecord {
   targetDuration: number;
 }
 
-// Persist to localStorage and Tauri backend (if available)
+// 持久化到 Tauri 后端（权威数据源）
+// 非 Tauri 环境（浏览器 dev）下只保留内存状态
 async function persistSessions(sessions: FocusSession[]) {
-  // Always save to localStorage as baseline
-  localStorage.setItem('study-timer-sessions', JSON.stringify(sessions));
-
-  // Also try Tauri backend if available
   try {
     const invoke = await getInvoke();
-    if (!invoke) return;
+    if (!invoke) return; // 浏览器 dev 模式，不持久化
 
-    // Preserve complete session data
     const records: SessionRecord[] = sessions.map((s) => ({
       id: s.id,
       subject: s.subject,
@@ -234,12 +220,52 @@ async function persistSessions(sessions: FocusSession[]) {
   }
 }
 
-// Load sessions from localStorage (with Tauri backend as primary if available)
+// 从 Tauri 后端加载会话数据
+// 首次加载时，尝试从 localStorage 迁移数据到 Tauri 后端
 async function loadSessionsFromBackend(): Promise<FocusSession[]> {
-  // Try Tauri backend first
+  // 尝试从 Tauri 后端加载
   try {
     const invoke = await getInvoke();
     if (invoke) {
+      // 先检查 localStorage 是否有旧数据需要迁移
+      const localData = localStorage.getItem('study-timer-sessions');
+      if (localData) {
+        const localSessions: FocusSession[] = JSON.parse(localData);
+        // 尝试从后端加载，看是否有数据
+        const backendData = await invoke<{
+          records: Array<{
+            id: string;
+            subject: string;
+            startedAt: number;
+            endedAt: number;
+            duration_seconds: number;
+            targetDuration: number;
+          }>;
+          total_seconds: number;
+        }>('get_study_data');
+
+        if (backendData.records.length === 0 && localSessions.length > 0) {
+          // 后端无数据，localStorage 有数据 → 迁移到后端
+          console.log('Migrating localStorage data to Tauri backend...');
+          await persistSessions(localSessions);
+          // 迁移完成后清除 localStorage
+          localStorage.removeItem('study-timer-sessions');
+          return localSessions;
+        }
+
+        // 后端有数据，清除 localStorage 中的旧数据（以后端为准）
+        localStorage.removeItem('study-timer-sessions');
+        return backendData.records.map((r) => ({
+          id: r.id,
+          subject: r.subject,
+          startedAt: r.startedAt,
+          endedAt: r.endedAt,
+          duration: r.duration_seconds * 1000,
+          targetDuration: r.targetDuration,
+        }));
+      }
+
+      // 没有 localStorage 数据，直接从后端加载
       const data = await invoke<{
         records: Array<{
           id: string;
@@ -264,10 +290,14 @@ async function loadSessionsFromBackend(): Promise<FocusSession[]> {
     console.error('Failed to load from Tauri backend:', error);
   }
 
-  // Fallback to localStorage
-  const local = localStorage.getItem('study-timer-sessions');
-  if (local) {
-    return JSON.parse(local);
+  // 非 Tauri 环境：尝试从 localStorage 加载
+  try {
+    const local = localStorage.getItem('study-timer-sessions');
+    if (local) {
+      return JSON.parse(local);
+    }
+  } catch {
+    // ignore parse errors
   }
 
   return [];

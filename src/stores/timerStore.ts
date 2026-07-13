@@ -60,16 +60,18 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
   },
 
   stop: (save = true) => {
-    const { status, startedAt, cumulativePausedDuration, subject, targetDuration } = get();
+    const { status, startedAt, pausedAt, cumulativePausedDuration, subject, targetDuration } = get();
     if (status !== 'RUNNING' && status !== 'PAUSED') return;
 
     if (save && startedAt) {
-      const elapsed = Date.now() - startedAt - cumulativePausedDuration;
+      // 暂停状态下，有效结束时间取 pausedAt 而非 Date.now()
+      const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
+      const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
       if (elapsed > 0) {
         useStatsStore.getState().addSession({
           subject,
           startedAt,
-          endedAt: Date.now(),
+          endedAt: effectiveEnd,
           duration: elapsed,
           targetDuration,
         });

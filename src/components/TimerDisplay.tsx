@@ -6,7 +6,7 @@ import styles from './TimerDisplay.module.css';
 interface TimerDisplayProps {
   elapsed: number;
   status: TimerStatus;
-  size?: 'normal' | 'compact';
+  size?: 'normal' | 'compact' | 'mini';
 }
 
 const STATUS_LABELS: Record<TimerStatus, string> = {
@@ -24,9 +24,14 @@ const LABEL_CLASSES: Record<TimerStatus, string> = {
 };
 
 function TimerDisplay({ elapsed, status, size = 'normal' }: TimerDisplayProps) {
+  const timeClass =
+    size === 'mini' ? styles.timeMini
+    : size === 'compact' ? styles.timeCompact
+    : '';
+
   return (
     <div className={styles.container}>
-      <span className={`${styles.time} ${size === 'compact' ? styles.timeCompact : ''}`}>
+      <span className={`${styles.time} ${timeClass}`}>
         {formatElapsed(elapsed)}
       </span>
       <span className={`${styles.label} ${LABEL_CLASSES[status]}`}>

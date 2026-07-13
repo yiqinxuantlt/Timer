@@ -6,6 +6,15 @@
   padding: var(--space-4) var(--space-4);
 }
 
+/* Compact mode container */
+.containerCompact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
 .button {
   width: 44px;
   height: 44px;
@@ -66,6 +75,23 @@
   color: white;
   border: none;
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+}
+
+/* Compact start button */
+.buttonStartCompact {
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+}
+
+.buttonStartCompact:hover:not(:disabled) {
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+}
+
+/* Compact regular buttons */
+.buttonCompact {
+  width: 36px;
+  height: 36px;
 }
 
 .buttonStart::before {

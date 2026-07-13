@@ -4,7 +4,7 @@ import type { TimerStatus } from '../types';
 
 interface TimerRingProps {
   progress: number;
-  size?: 'normal' | 'compact';
+  size?: 'normal' | 'compact' | 'mini';
   status?: TimerStatus;
 }
 
@@ -15,7 +15,9 @@ function TimerRing({ progress, size = 'normal', status = 'IDLE' }: TimerRingProp
   const offset = CIRCUMFERENCE * (1 - progress);
 
   const containerClass =
-    size === 'compact' ? styles.containerCompact : styles.container;
+    size === 'compact' ? styles.containerCompact
+    : size === 'mini' ? styles.containerMini
+    : styles.container;
 
   const progressClass = status === 'COMPLETED'
     ? styles.progressCircleCompleted
@@ -23,12 +25,14 @@ function TimerRing({ progress, size = 'normal', status = 'IDLE' }: TimerRingProp
     ? styles.progressCircleRunning
     : styles.progressCircle;
 
+  const svgSize = size === 'mini' ? 64 : size === 'compact' ? 80 : 160;
+
   return (
     <div className={containerClass}>
       <svg
         className={styles.svg}
-        width={size === 'compact' ? 80 : 160}
-        height={size === 'compact' ? 80 : 160}
+        width={svgSize}
+        height={svgSize}
         viewBox="0 0 160 160"
       >
         <defs>

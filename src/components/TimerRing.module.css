@@ -107,3 +107,39 @@
     stroke-width: 4.5;
   }
 }
+
+/* Mini mode (for horizontal compact layout) */
+.containerMini {
+  width: 64px;
+  height: 64px;
+}
+
+.containerMini svg {
+  width: 64px;
+  height: 64px;
+}
+
+.containerMini .bgCircle {
+  stroke-width: 3;
+}
+
+.containerMini .progressCircle,
+.containerMini .progressCircleRunning,
+.containerMini .progressCircleCompleted {
+  stroke-width: 3;
+}
+
+.containerMini .progressCircleRunning {
+  animation: pulseGlowMini 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlowMini {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6));
+    stroke-width: 3;
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.9));
+    stroke-width: 3.5;
+  }
+}

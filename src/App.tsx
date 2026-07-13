@@ -138,7 +138,7 @@ function App() {
       const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
       const appWindow = getCurrentWindow();
       if (compactMode) {
-        appWindow.setSize(new LogicalSize(160, 200)).catch(console.error);
+        appWindow.setSize(new LogicalSize(220, 140)).catch(console.error);
       } else {
         appWindow.setSize(new LogicalSize(320, 420)).catch(console.error);
       }

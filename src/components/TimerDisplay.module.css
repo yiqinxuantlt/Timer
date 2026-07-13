@@ -19,6 +19,11 @@
   letter-spacing: -0.01em;
 }
 
+.timeMini {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
 .label {
   font-size: var(--text-sm);
   color: var(--text-muted);

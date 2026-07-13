@@ -7,6 +7,7 @@ export interface TimerState {
   pausedAt: number | null;
   cumulativePausedDuration: number;
   subject: string;
+  completedDuration: number | null; // 完成时保留最终时长，用于显示
 }
 
 export interface FocusSession {

@@ -22,6 +22,7 @@ const initialState: TimerState = {
   pausedAt: null,
   cumulativePausedDuration: 0,
   subject: '学习',
+  completedDuration: null,
 };
 
 export const useTimerStore = create<TimerStore>((set, get) => ({
@@ -35,6 +36,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       pausedAt: null,
       cumulativePausedDuration: 0,
       subject: subject ?? get().subject,
+      completedDuration: null,
     });
   },
 
@@ -105,6 +107,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       startedAt: null,
       pausedAt: null,
       cumulativePausedDuration: 0,
+      completedDuration: elapsed,
     });
   },
 
@@ -114,6 +117,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       startedAt: null,
       pausedAt: null,
       cumulativePausedDuration: 0,
+      completedDuration: null,
     });
   },
 
@@ -123,8 +127,13 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
 
 // Utility hook: get elapsed time without setInterval decrement
 export function useElapsed(): number {
-  const { status, startedAt, pausedAt, cumulativePausedDuration } =
+  const { status, startedAt, pausedAt, cumulativePausedDuration, completedDuration } =
     useTimerStore();
+
+  // COMPLETED 状态下使用保留的最终时长
+  if (status === 'COMPLETED') {
+    return completedDuration ?? 0;
+  }
 
   if (status === 'IDLE' || !startedAt) return 0;
 

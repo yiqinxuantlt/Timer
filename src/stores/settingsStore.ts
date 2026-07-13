@@ -7,6 +7,7 @@ interface SettingsState extends AppSettings {
   toggleCompactMode: () => void;
   toggleAlwaysOnTop: () => void;
   toggleNotification: () => void;
+  toggleGlobalShortcuts: () => void;
 }
 
 // Default settings
@@ -15,6 +16,7 @@ const defaultSettings: AppSettings = {
   compactMode: false,
   alwaysOnTop: true,
   notificationEnabled: true,
+  globalShortcutsEnabled: false, // 默认关闭全局快捷键
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -35,6 +37,8 @@ export const useSettingsStore = create<SettingsState>()(
       },
       toggleNotification: () =>
         set({ notificationEnabled: !get().notificationEnabled }),
+      toggleGlobalShortcuts: () =>
+        set({ globalShortcutsEnabled: !get().globalShortcutsEnabled }),
     }),
     {
       name: 'study-timer-settings',

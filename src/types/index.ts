@@ -38,4 +38,5 @@ export interface AppSettings {
   compactMode: boolean;
   alwaysOnTop: boolean;
   notificationEnabled: boolean;
+  globalShortcutsEnabled: boolean;
 }

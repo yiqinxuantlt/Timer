@@ -18,7 +18,7 @@ function App() {
   const elapsed = useElapsed();
   const progress = useProgress();
   const { loaded, loadFromStorage } = useStatsStore();
-  const { compactMode, alwaysOnTop } = useSettingsStore();
+  const { compactMode, alwaysOnTop, globalShortcutsEnabled } = useSettingsStore();
   const [, setTick] = useState(0);
   const [inTauri, setInTauri] = useState(false);
 
@@ -27,46 +27,58 @@ function App() {
     isTauri().then(setInTauri).catch(() => setInTauri(false));
   }, []);
 
-  // Keyboard shortcuts (only in Tauri)
+  // Keyboard shortcuts (only in Tauri) - with modifier keys for safety
   useEffect(() => {
-    if (!inTauri) return;
-    let mounted = true;
-    const registerShortcuts = async () => {
-      const { register } = await import('@tauri-apps/plugin-global-shortcut');
-      const { start, pause, resume, stop } = useTimerStore.getState();
-      
-      await register('Space', () => {
-        if (!mounted) return;
-        const currentStatus = useTimerStore.getState().status;
-        if (currentStatus === 'IDLE' || currentStatus === 'COMPLETED') {
-          start();
-        } else if (currentStatus === 'RUNNING') {
-          pause();
-        } else if (currentStatus === 'PAUSED') {
-          resume();
-        }
-      });
-      
-      await register('Escape', () => {
-        if (!mounted) return;
-        const currentStatus = useTimerStore.getState().status;
-        if (currentStatus === 'RUNNING' || currentStatus === 'PAUSED') {
-          stop(true);
-        }
-      });
+    if (!inTauri || !globalShortcutsEnabled) return;
+
+    let isRegistered = false;
+    const SHORTCUTS = {
+      playPause: 'Ctrl+Alt+Space',
+      stop: 'Ctrl+Alt+S',
     };
-    registerShortcuts().catch(console.error);
-    
+
+    const registerShortcuts = async () => {
+      try {
+        const { register } = await import('@tauri-apps/plugin-global-shortcut');
+        const { start, pause, resume, stop } = useTimerStore.getState();
+
+        // Ctrl+Alt+Space: 开始或暂停
+        await register(SHORTCUTS.playPause, () => {
+          const currentStatus = useTimerStore.getState().status;
+          if (currentStatus === 'IDLE' || currentStatus === 'COMPLETED') {
+            start();
+          } else if (currentStatus === 'RUNNING') {
+            pause();
+          } else if (currentStatus === 'PAUSED') {
+            resume();
+          }
+        });
+
+        // Ctrl+Alt+S: 停止
+        await register(SHORTCUTS.stop, () => {
+          const currentStatus = useTimerStore.getState().status;
+          if (currentStatus === 'RUNNING' || currentStatus === 'PAUSED') {
+            stop(true);
+          }
+        });
+
+        isRegistered = true;
+      } catch (error) {
+        console.error('Failed to register shortcuts:', error);
+      }
+    };
+
+    registerShortcuts();
+
     return () => {
-      mounted = false;
-      if (inTauri) {
+      if (isRegistered) {
         import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => {
-          unregister('Space').catch(() => {});
-          unregister('Escape').catch(() => {});
+          unregister(SHORTCUTS.playPause).catch(() => {});
+          unregister(SHORTCUTS.stop).catch(() => {});
         });
       }
     };
-  }, [inTauri]);
+  }, [inTauri, globalShortcutsEnabled]);
 
   // Desktop notifications (only in Tauri) — triggered on COMPLETED status
   useEffect(() => {

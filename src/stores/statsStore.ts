@@ -93,39 +93,106 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 }));
 
 // Helper: recalculate today's total duration
+// 按时间区间重叠计算，跨午夜时按比例分配到各天
 function recalculateTodayTotal(sessions: FocusSession[]): number {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
 
-  return sessions
-    .filter((s) => s.endedAt >= todayStart.getTime())
-    .reduce((sum, s) => sum + s.duration, 0);
+  let totalMs = 0;
+
+  for (const session of sessions) {
+    // 计算该记录与今天时间区间的重叠
+    const overlap = calculateSessionDayOverlap(
+      session.startedAt,
+      session.endedAt,
+      todayStart.getTime(),
+      todayEnd.getTime()
+    );
+    totalMs += overlap;
+  }
+
+  return totalMs;
+}
+
+// 计算单个记录与指定日期的重叠时长（毫秒）
+function calculateSessionDayOverlap(
+  sessionStart: number,
+  sessionEnd: number,
+  dayStart: number,
+  dayEnd: number
+): number {
+  // 无重叠
+  if (sessionEnd <= dayStart || sessionStart >= dayEnd) {
+    return 0;
+  }
+
+  // 计算重叠区间
+  const overlapStart = Math.max(sessionStart, dayStart);
+  const overlapEnd = Math.min(sessionEnd, dayEnd);
+
+  return Math.max(0, overlapEnd - overlapStart);
 }
 
 // Helper: calculate consecutive days streak
+// 按实际发生日期（按 startedAt 和 endedAt 覆盖的日期）计算
 function recalculateStreak(sessions: FocusSession[]): number {
   if (sessions.length === 0) return 0;
 
-  const dates = new Set<string>();
-  sessions.forEach((s) => {
-    const d = new Date(s.endedAt);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    dates.add(key);
-  });
+  // 收集所有有记录的日期（按记录覆盖的日期）
+  const datesWithActivity = new Set<string>();
+
+  for (const session of sessions) {
+    // 获取该记录覆盖的所有日期
+    const dates = getSessionCoveredDates(session.startedAt, session.endedAt);
+    dates.forEach((d) => datesWithActivity.add(d));
+  }
 
   let streak = 0;
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    if (dates.has(key)) {
+
+    if (datesWithActivity.has(key)) {
       streak++;
     } else if (i > 0) {
+      // 今天没有记录不算断连，但之前某天没有就断了
       break;
     }
   }
+
   return streak;
+}
+
+// 获取记录覆盖的所有日期
+function getSessionCoveredDates(startedAt: number, endedAt: number): string[] {
+  const dates: string[] = [];
+
+  const start = new Date(startedAt);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endedAt);
+  end.setHours(0, 0, 0, 0);
+
+  // 如果在同一天，只返回一天
+  if (start.getTime() === end.getTime()) {
+    dates.push(`${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`);
+    return dates;
+  }
+
+  // 跨天：遍历每一天
+  const current = new Date(start);
+  while (current <= end) {
+    dates.push(`${current.getFullYear()}-${current.getMonth()}-${current.getDate()}`);
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
 }
 
 interface SessionRecord {

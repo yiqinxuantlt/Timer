@@ -141,7 +141,63 @@ function App() {
     if (!loaded) {
       loadFromStorage();
     }
+    // 恢复计时状态并检查有效性
+    useTimerStore.getState().restoreFromPersisted();
   }, [loaded, loadFromStorage]);
+
+  // 窗口关闭时保存计时状态（Tauri 环境）
+  useEffect(() => {
+    if (!inTauri) return;
+
+    const setupCloseHandler = async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const appWindow = getCurrentWindow();
+
+      // 监听关闭请求
+      const unlisten = await appWindow.onCloseRequested(async (event) => {
+        const { status, startedAt, pausedAt, cumulativePausedDuration, subject, targetDuration } =
+          useTimerStore.getState();
+
+        // 如果有正在进行的计时，阻止关闭并保存
+        if ((status === 'RUNNING' || status === 'PAUSED') && startedAt) {
+          // 阻止默认关闭行为
+          event.preventDefault();
+
+          // 计算有效时长并保存
+          const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
+          const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
+
+          if (elapsed > 0) {
+            useStatsStore.getState().addSession({
+              subject,
+              startedAt,
+              endedAt: effectiveEnd,
+              duration: elapsed,
+              targetDuration,
+            });
+          }
+
+          // 清空计时状态
+          useTimerStore.setState({
+            status: 'IDLE',
+            startedAt: null,
+            pausedAt: null,
+            cumulativePausedDuration: 0,
+          });
+
+          // 允许关闭
+          appWindow.close();
+        }
+      });
+
+      return unlisten;
+    };
+
+    const cleanup = setupCloseHandler();
+    return () => {
+      cleanup.then((unlisten) => unlisten?.());
+    };
+  }, [inTauri]);
 
   // Apply compact mode window resize (only in Tauri)
   useEffect(() => {

@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import type { FocusSession } from '../types';
-
-// Check if running in Tauri environment
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+import { isTauri } from '../lib/platform';
 
 // Lazy load invoke only when needed
 async function getInvoke() {
-  if (!isTauri) return null;
+  const runningInTauri = await isTauri();
+  if (!runningInTauri) return null;
   try {
     const mod = await import('@tauri-apps/api/core');
     return mod.invoke;

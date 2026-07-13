@@ -11,9 +11,7 @@ import Controls from './components/Controls';
 import StatsCard from './components/StatsCard';
 import HistoryPanel from './components/HistoryPanel';
 import CompactTimer from './components/CompactTimer';
-
-// Check if running in Tauri environment
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+import { isTauri } from './lib/platform';
 
 function App() {
   const { status } = useTimerStore();
@@ -22,10 +20,16 @@ function App() {
   const { loaded, loadFromStorage } = useStatsStore();
   const { compactMode, alwaysOnTop } = useSettingsStore();
   const [, setTick] = useState(0);
+  const [inTauri, setInTauri] = useState(false);
+
+  // Initialize Tauri detection
+  useEffect(() => {
+    isTauri().then(setInTauri).catch(() => setInTauri(false));
+  }, []);
 
   // Keyboard shortcuts (only in Tauri)
   useEffect(() => {
-    if (!isTauri) return;
+    if (!inTauri) return;
     let mounted = true;
     const registerShortcuts = async () => {
       const { register } = await import('@tauri-apps/plugin-global-shortcut');
@@ -55,18 +59,18 @@ function App() {
     
     return () => {
       mounted = false;
-      if (isTauri) {
+      if (inTauri) {
         import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => {
           unregister('Space').catch(() => {});
           unregister('Escape').catch(() => {});
         });
       }
     };
-  }, []);
+  }, [inTauri]);
 
   // Desktop notifications (only in Tauri) — triggered on COMPLETED status
   useEffect(() => {
-    if (!isTauri) return;
+    if (!inTauri) return;
     if (status !== 'COMPLETED') return;
 
     const sendCompletionNotification = async () => {
@@ -95,7 +99,7 @@ function App() {
     };
 
     sendCompletionNotification();
-  }, [status]);
+  }, [status, inTauri]);
 
   // Drive timer display updates with minimal interval
   // Also detect when target duration is reached → auto-complete
@@ -129,7 +133,7 @@ function App() {
 
   // Apply compact mode window resize (only in Tauri)
   useEffect(() => {
-    if (!isTauri) return;
+    if (!inTauri) return;
     const applyWindowSize = async () => {
       const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
       const appWindow = getCurrentWindow();
@@ -140,18 +144,18 @@ function App() {
       }
     };
     applyWindowSize();
-  }, [compactMode]);
+  }, [compactMode, inTauri]);
 
   // Apply always on top (only in Tauri)
   useEffect(() => {
-    if (!isTauri) return;
+    if (!inTauri) return;
     const applyAlwaysOnTop = async () => {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const appWindow = getCurrentWindow();
       appWindow.setAlwaysOnTop(alwaysOnTop).catch(console.error);
     };
     applyAlwaysOnTop();
-  }, [alwaysOnTop]);
+  }, [alwaysOnTop, inTauri]);
 
   const containerClass = `app-container ${status === 'RUNNING' ? 'app-running' : ''} ${status === 'PAUSED' ? 'app-paused' : ''} ${status === 'COMPLETED' ? 'app-completed' : ''}`;
 

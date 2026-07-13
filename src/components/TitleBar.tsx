@@ -1,33 +1,30 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Minus, X } from 'lucide-react';
+import { isTauri } from '../lib/platform';
 import styles from './TitleBar.module.css';
 
-// Check if running in Tauri environment
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-
-async function getAppWindow() {
-  if (!isTauri) return null;
-  const { getCurrentWindow } = await import('@tauri-apps/api/window');
-  return getCurrentWindow();
-}
-
 function TitleBar() {
+  const [inTauri, setInTauri] = useState(false);
+
+  useEffect(() => {
+    isTauri().then(setInTauri).catch(() => setInTauri(false));
+  }, []);
+
   const handleMinimize = async () => {
-    const appWindow = await getAppWindow();
-    if (appWindow) {
-      await appWindow.minimize();
-    }
+    if (!inTauri) return;
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const appWindow = getCurrentWindow();
+    await appWindow.minimize();
   };
 
   const handleClose = async () => {
-    const appWindow = await getAppWindow();
-    if (appWindow) {
-      await appWindow.close();
-    }
+    if (!inTauri) return;
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const appWindow = getCurrentWindow();
+    await appWindow.close();
   };
 
-  // Only show title bar in Tauri environment
-  if (!isTauri) return null;
+  if (!inTauri) return null;
 
   return (
     <div className={styles.container} data-tauri-drag-region>

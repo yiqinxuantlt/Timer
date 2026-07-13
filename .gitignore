@@ -11,6 +11,27 @@ dist-ssr/
 target/
 Cargo.lock
 
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Private keys / API keys
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+**/deploy_key*
+**/secret*
+**/credential*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -21,14 +42,6 @@ Cargo.lock
 *.njsproj
 *.sln
 *.sw?
-
-# Tauri
-src-tauri/target/
-
-# Environment
-.env
-.env.local
-.env.*.local
 
 # Logs
 logs
@@ -42,3 +55,8 @@ lerna-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# OpenCode / Agent temp files
+.omo/
+.playwright-mcp/
+.codegraph/

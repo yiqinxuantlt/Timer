@@ -7,9 +7,9 @@ import TimerRing from './components/TimerRing';
 import SubjectInput from './components/SubjectInput';
 import DurationSelector from './components/DurationSelector';
 import Controls from './components/Controls';
-import StatsCard from './components/StatsCard';
 import HistoryPanel from './components/HistoryPanel';
 import SettingsPanel from './components/SettingsPanel';
+import TodayStats from './components/TodayStats';
 import { isTauri } from './lib/platform';
 
 function App() {
@@ -224,7 +224,7 @@ function App() {
         <SubjectInput />
         <DurationSelector />
         <Controls />
-        <StatsCard />
+        <TodayStats />
         <HistoryPanel />
       </div>
 

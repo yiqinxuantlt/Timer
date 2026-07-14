@@ -8,6 +8,7 @@ import SubjectInput from './components/SubjectInput';
 import DurationSelector from './components/DurationSelector';
 import Controls from './components/Controls';
 import HistoryPanel from './components/HistoryPanel';
+import HistoryModal from './components/HistoryModal';
 import SettingsPanel from './components/SettingsPanel';
 import TodayStats from './components/TodayStats';
 import { isTauri } from './lib/platform';
@@ -21,6 +22,7 @@ function App() {
   const [, setTick] = useState(0);
   const [inTauri, setInTauri] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Initialize Tauri detection
   useEffect(() => {
@@ -214,7 +216,7 @@ function App() {
 
   return (
     <div className={containerClass}>
-      <TitleBar onOpenSettings={() => setSettingsOpen(true)} />
+      <TitleBar onOpenSettings={() => setSettingsOpen(true)} onOpenHistory={() => setHistoryOpen(true)} />
 
       <div className="main-content">
         <div className="timer-section">
@@ -229,6 +231,7 @@ function App() {
       </div>
 
       <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <HistoryModal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
     </div>
   );
 }

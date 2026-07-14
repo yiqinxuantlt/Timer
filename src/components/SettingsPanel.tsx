@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { X, Bell, Keyboard, Timer, Layers, Pin } from 'lucide-react';
+import { X, Bell, Timer, Layers } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
 import styles from './SettingsPanel.module.css';
 
@@ -21,8 +21,6 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const {
     targetDuration,
     setTargetDuration,
-    compactMode,
-    toggleCompactMode,
     alwaysOnTop,
     toggleAlwaysOnTop,
     notificationEnabled,
@@ -74,20 +72,6 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               <span className={styles.sectionTitle}>窗口</span>
             </div>
             <div className={styles.toggleList}>
-              <div className={styles.toggleItem}>
-                <div className={styles.toggleInfo}>
-                  <span className={styles.toggleLabel}>紧凑模式</span>
-                  <span className={styles.toggleHint}>使用更小的窗口</span>
-                </div>
-                <button
-                  className={`${styles.toggle} ${compactMode ? styles.toggleActive : ''}`}
-                  onClick={toggleCompactMode}
-                  role="switch"
-                  aria-checked={compactMode}
-                >
-                  <span className={styles.toggleSwitch} />
-                </button>
-              </div>
               <div className={styles.toggleItem}>
                 <div className={styles.toggleInfo}>
                   <span className={styles.toggleLabel}>窗口置顶</span>

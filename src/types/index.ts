@@ -35,7 +35,6 @@ export interface StudyData {
 
 export interface AppSettings {
   targetDuration: number;
-  compactMode: boolean;
   alwaysOnTop: boolean;
   notificationEnabled: boolean;
   globalShortcutsEnabled: boolean;

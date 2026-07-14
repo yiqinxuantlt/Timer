@@ -9,7 +9,6 @@ import DurationSelector from './components/DurationSelector';
 import Controls from './components/Controls';
 import StatsCard from './components/StatsCard';
 import HistoryPanel from './components/HistoryPanel';
-import CompactTimer from './components/CompactTimer';
 import SettingsPanel from './components/SettingsPanel';
 import { isTauri } from './lib/platform';
 
@@ -18,7 +17,7 @@ function App() {
   const elapsed = useElapsed();
   const progress = useProgress();
   const { loaded, loadFromStorage } = useStatsStore();
-  const { compactMode, alwaysOnTop, globalShortcutsEnabled } = useSettingsStore();
+  const { alwaysOnTop, globalShortcutsEnabled } = useSettingsStore();
   const [, setTick] = useState(0);
   const [inTauri, setInTauri] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -200,21 +199,6 @@ function App() {
     };
   }, [inTauri]);
 
-  // Apply compact mode window resize (only in Tauri)
-  useEffect(() => {
-    if (!inTauri) return;
-    const applyWindowSize = async () => {
-      const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
-      const appWindow = getCurrentWindow();
-      if (compactMode) {
-        appWindow.setSize(new LogicalSize(220, 140)).catch(console.error);
-      } else {
-        appWindow.setSize(new LogicalSize(320, 420)).catch(console.error);
-      }
-    };
-    applyWindowSize();
-  }, [compactMode, inTauri]);
-
   // Apply always on top (only in Tauri)
   useEffect(() => {
     if (!inTauri) return;
@@ -227,14 +211,6 @@ function App() {
   }, [alwaysOnTop, inTauri]);
 
   const containerClass = `app-container ${status === 'RUNNING' ? 'app-running' : ''} ${status === 'PAUSED' ? 'app-paused' : ''} ${status === 'COMPLETED' ? 'app-completed' : ''}`;
-
-  if (compactMode) {
-    return (
-      <div className={containerClass}>
-        <CompactTimer />
-      </div>
-    );
-  }
 
   return (
     <div className={containerClass}>

@@ -4,13 +4,11 @@ import { useTimerStore, useElapsed, useProgress } from './stores/timerStore';
 import { useStatsStore } from './stores/statsStore';
 import TitleBar from './components/TitleBar';
 import TimerRing from './components/TimerRing';
-import SubjectInput from './components/SubjectInput';
-import DurationSelector from './components/DurationSelector';
 import Controls from './components/Controls';
-import HistoryPanel from './components/HistoryPanel';
+import TodayStats from './components/TodayStats';
+import ContextMenu from './components/ContextMenu';
 import HistoryModal from './components/HistoryModal';
 import SettingsPanel from './components/SettingsPanel';
-import TodayStats from './components/TodayStats';
 import { isTauri } from './lib/platform';
 
 function App() {
@@ -23,6 +21,7 @@ function App() {
   const [inTauri, setInTauri] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Initialize Tauri detection
   useEffect(() => {
@@ -212,10 +211,19 @@ function App() {
     applyAlwaysOnTop();
   }, [alwaysOnTop, inTauri]);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu(null);
+  };
+
   const containerClass = `app-container ${status === 'RUNNING' ? 'app-running' : ''} ${status === 'PAUSED' ? 'app-paused' : ''} ${status === 'COMPLETED' ? 'app-completed' : ''}`;
 
   return (
-    <div className={containerClass}>
+    <div className={containerClass} onContextMenu={handleContextMenu}>
       <TitleBar onOpenSettings={() => setSettingsOpen(true)} onOpenHistory={() => setHistoryOpen(true)} />
 
       <div className="main-content">
@@ -223,15 +231,22 @@ function App() {
           <TimerRing progress={progress} status={status} elapsed={elapsed} />
         </div>
 
-        <SubjectInput />
-        <DurationSelector />
         <Controls />
         <TodayStats />
-        <HistoryPanel />
       </div>
 
       <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <HistoryModal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={closeContextMenu}
+          onOpenHistory={() => setHistoryOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
+      )}
     </div>
   );
 }

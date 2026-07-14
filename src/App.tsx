@@ -164,31 +164,37 @@ function App() {
 
         // 如果有正在进行的计时，阻止关闭并保存
         if ((status === 'RUNNING' || status === 'PAUSED') && startedAt) {
+          // 阻止默认关闭行为
           event.preventDefault();
 
-          const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
-          const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
+          try {
+            const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
+            const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
 
-          if (elapsed > 0) {
-            useStatsStore.getState().addSession({
-              subject,
-              startedAt,
-              endedAt: effectiveEnd,
-              duration: elapsed,
-              targetDuration,
+            if (elapsed > 0) {
+              await useStatsStore.getState().addSession({
+                subject,
+                startedAt,
+                endedAt: effectiveEnd,
+                duration: elapsed,
+                targetDuration,
+              });
+            }
+
+            useTimerStore.setState({
+              status: 'IDLE',
+              startedAt: null,
+              pausedAt: null,
+              cumulativePausedDuration: 0,
             });
+          } catch (error) {
+            console.error('Failed to save session on close:', error);
           }
 
-          useTimerStore.setState({
-            status: 'IDLE',
-            startedAt: null,
-            pausedAt: null,
-            cumulativePausedDuration: 0,
-          });
-
-          // 允许关闭
-          appWindow.close();
+          // 使用 destroy() 强制关闭窗口，避免再次触发 onCloseRequested
+          appWindow.destroy();
         }
+        // 如果没有正在计时，不调用 event.preventDefault()，允许默认关闭行为
       });
     };
 

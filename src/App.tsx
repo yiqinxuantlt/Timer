@@ -148,24 +148,24 @@ function App() {
   }, [loaded, loadFromStorage]);
 
   // 窗口关闭时保存计时状态（Tauri 环境）
+  // 使用 ref 避免重复注册监听器
   useEffect(() => {
     if (!inTauri) return;
+
+    let unlistenFn: (() => void) | null = null;
 
     const setupCloseHandler = async () => {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const appWindow = getCurrentWindow();
 
-      // 监听关闭请求
-      const unlisten = await appWindow.onCloseRequested(async (event) => {
+      unlistenFn = await appWindow.onCloseRequested(async (event) => {
         const { status, startedAt, pausedAt, cumulativePausedDuration, subject, targetDuration } =
           useTimerStore.getState();
 
         // 如果有正在进行的计时，阻止关闭并保存
         if ((status === 'RUNNING' || status === 'PAUSED') && startedAt) {
-          // 阻止默认关闭行为
           event.preventDefault();
 
-          // 计算有效时长并保存
           const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
           const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
 
@@ -179,7 +179,6 @@ function App() {
             });
           }
 
-          // 清空计时状态
           useTimerStore.setState({
             status: 'IDLE',
             startedAt: null,
@@ -191,13 +190,12 @@ function App() {
           appWindow.close();
         }
       });
-
-      return unlisten;
     };
 
-    const cleanup = setupCloseHandler();
+    setupCloseHandler();
+
     return () => {
-      cleanup.then((unlisten) => unlisten?.());
+      unlistenFn?.();
     };
   }, [inTauri]);
 

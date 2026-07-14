@@ -1,0 +1,117 @@
+/* CompactTimer - 横向紧凑布局 */
+.container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+}
+
+/* Mini title bar - 顶部拖动区域 + 窗口控制 */
+.miniTitleBar {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-2);
+  background: var(--glass-bg-light);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.dragRegion {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  cursor: grab;
+}
+
+.dragRegion:active {
+  cursor: grabbing;
+}
+
+.titleButtons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.titleButton {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.titleButton:hover {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+}
+
+.titleButton.close:hover {
+  background: var(--danger);
+  color: white;
+}
+
+/* Main content - 横向布局 */
+.mainContent {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+/* 左侧：TimerRing */
+.ringSection {
+  flex-shrink: 0;
+}
+
+/* 右侧：时间显示 + 状态 + 控制按钮 */
+.infoSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.timeDisplay {
+  font-size: 20px;
+  font-weight: var(--weight-normal);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.statusLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+}
+
+.statusLabelRunning {
+  color: var(--accent-tertiary);
+}
+
+.statusLabelPaused {
+  color: var(--warning);
+}
+
+.statusLabelCompleted {
+  color: var(--success);
+}

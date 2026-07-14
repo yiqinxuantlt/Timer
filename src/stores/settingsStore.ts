@@ -3,10 +3,12 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AppSettings } from '../types';
 
 interface SettingsState extends AppSettings {
+  compactMode: boolean;
   setTargetDuration: (ms: number) => void;
   toggleAlwaysOnTop: () => void;
   toggleNotification: () => void;
   toggleGlobalShortcuts: () => void;
+  toggleCompactMode: () => void;
   addRecentSubject: (subject: string) => void;
 }
 
@@ -17,6 +19,7 @@ const defaultSettings: AppSettings = {
   notificationEnabled: true,
   globalShortcutsEnabled: false, // 默认关闭全局快捷键
   recentSubjects: [],
+  compactMode: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -34,6 +37,8 @@ export const useSettingsStore = create<SettingsState>()(
         set({ notificationEnabled: !get().notificationEnabled }),
       toggleGlobalShortcuts: () =>
         set({ globalShortcutsEnabled: !get().globalShortcutsEnabled }),
+      toggleCompactMode: () =>
+        set({ compactMode: !get().compactMode }),
 
       addRecentSubject: (subject) => {
         const trimmed = subject.trim();

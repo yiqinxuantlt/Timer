@@ -39,4 +39,5 @@ export interface AppSettings {
   notificationEnabled: boolean;
   globalShortcutsEnabled: boolean;
   recentSubjects: string[];
+  compactMode: boolean;
 }

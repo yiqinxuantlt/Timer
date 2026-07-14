@@ -9,6 +9,7 @@ import TodayStats from './components/TodayStats';
 import ContextMenu from './components/ContextMenu';
 import HistoryModal from './components/HistoryModal';
 import SettingsPanel from './components/SettingsPanel';
+import CompactTimer from './components/CompactTimer';
 import { isTauri } from './lib/platform';
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
   const elapsed = useElapsed();
   const progress = useProgress();
   const { loaded, loadFromStorage } = useStatsStore();
-  const { alwaysOnTop, globalShortcutsEnabled } = useSettingsStore();
+  const { alwaysOnTop, globalShortcutsEnabled, compactMode } = useSettingsStore();
   const [, setTick] = useState(0);
   const [inTauri, setInTauri] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -211,6 +212,24 @@ function App() {
     applyAlwaysOnTop();
   }, [alwaysOnTop, inTauri]);
 
+  // Resize window when compact mode toggles (only in Tauri)
+  useEffect(() => {
+    if (!inTauri) return;
+    const resizeWindow = async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const { LogicalSize } = await import('@tauri-apps/api/window');
+      const appWindow = getCurrentWindow();
+      if (compactMode) {
+        await appWindow.setSize(new LogicalSize(220, 140));
+        await appWindow.setMinSize(new LogicalSize(220, 140));
+      } else {
+        await appWindow.setSize(new LogicalSize(320, 420));
+        await appWindow.setMinSize(new LogicalSize(320, 280));
+      }
+    };
+    resizeWindow();
+  }, [compactMode, inTauri]);
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
@@ -222,7 +241,9 @@ function App() {
 
   const containerClass = `app-container ${status === 'RUNNING' ? 'app-running' : ''} ${status === 'PAUSED' ? 'app-paused' : ''} ${status === 'COMPLETED' ? 'app-completed' : ''}`;
 
-  return (
+  return compactMode ? (
+    <CompactTimer />
+  ) : (
     <div className={containerClass} onContextMenu={handleContextMenu}>
       <TitleBar onOpenSettings={() => setSettingsOpen(true)} onOpenHistory={() => setHistoryOpen(true)} />
 

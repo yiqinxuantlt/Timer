@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
-import { History, Settings, Pin, Info } from 'lucide-react';
+import { History, Settings, Pin, Info, Minimize2 } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
 import styles from './ContextMenu.module.css';
 
@@ -13,7 +13,7 @@ interface ContextMenuProps {
 
 function ContextMenu({ x, y, onClose, onOpenHistory, onOpenSettings }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { alwaysOnTop, toggleAlwaysOnTop } = useSettingsStore();
+  const { alwaysOnTop, compactMode, toggleAlwaysOnTop, toggleCompactMode } = useSettingsStore();
 
   // 调整位置防止溢出窗口
   useEffect(() => {
@@ -65,6 +65,11 @@ function ContextMenu({ x, y, onClose, onOpenHistory, onOpenSettings }: ContextMe
     onClose();
   };
 
+  const handleCompactMode = () => {
+    toggleCompactMode();
+    onClose();
+  };
+
   const handleAbout = () => {
     alert('学习计时器 v1.0\n\n专注学习，高效管理时间');
     onClose();
@@ -90,6 +95,11 @@ function ContextMenu({ x, y, onClose, onOpenHistory, onOpenSettings }: ContextMe
           <Pin size={14} />
           <span>置顶窗口</span>
           {alwaysOnTop && <span className={styles.check}>✓</span>}
+        </button>
+        <button className={styles.item} onClick={handleCompactMode}>
+          <Minimize2 size={14} />
+          <span>紧凑模式</span>
+          {compactMode && <span className={styles.check}>✓</span>}
         </button>
         <div className={styles.divider} />
         <button className={styles.item} onClick={handleAbout}>

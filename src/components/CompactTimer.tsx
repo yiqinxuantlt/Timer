@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Minus, X, Maximize2 } from 'lucide-react';
 import { isTauri } from '../lib/platform';
-import { useTimerStore, useElapsed, formatElapsed } from '../stores/timerStore';
+import { useTimerStore, useTimerUpdater, formatElapsed } from '../stores/timerStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import TimerRing from './TimerRing';
 import Controls from './Controls';
@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function CompactTimer() {
   const status = useTimerStore((s) => s.status);
-  const elapsed = useElapsed();
+  const elapsed = useTimerUpdater(); // 使用 rAF 驱动的更新
   const { toggleCompactMode } = useSettingsStore();
   const [inTauri, setInTauri] = useState(false);
 

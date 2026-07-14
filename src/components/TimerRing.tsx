@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import styles from './TimerRing.module.css';
 import type { TimerStatus } from '../types';
-import { formatElapsed } from '../stores/timerStore';
+import { useTimerUpdater, formatElapsed } from '../stores/timerStore';
 
 interface TimerRingProps {
   progress: number;
@@ -20,7 +20,14 @@ const STATUS_LABELS: Record<TimerStatus, string> = {
   COMPLETED: '已完成',
 };
 
-function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed = 0 }: TimerRingProps) {
+function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed: elapsedProp }: TimerRingProps) {
+  // 使用 rAF 驱动的 elapsed 更新（仅在 RUNNING 状态有效）
+  const rafElapsed = useTimerUpdater();
+
+  // 优先使用 prop 传入的 elapsed（用于非 RUNNING 状态）
+  // 如果没有 prop 或状态为 RUNNING，使用 rAF 驱动的值
+  const elapsed = (status === 'RUNNING' || elapsedProp === undefined) ? rafElapsed : elapsedProp;
+
   const offset = CIRCUMFERENCE * (1 - progress);
 
   const containerClass =

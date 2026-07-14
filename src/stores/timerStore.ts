@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useState, useEffect, useMemo } from 'react';
 import type { TimerStatus, TimerState } from '../types';
 import { useStatsStore } from './statsStore';
 
@@ -177,21 +178,62 @@ export const useTimerStore = create<TimerStore>()(
   )
 );
 
-// Utility hook: get elapsed time without setInterval decrement
+// Utility hook: get elapsed time with fine-grained selectors
 export function useElapsed(): number {
-  const { status, startedAt, pausedAt, cumulativePausedDuration, completedDuration } =
-    useTimerStore();
+  const status = useTimerStore((s) => s.status);
+  const startedAt = useTimerStore((s) => s.startedAt);
+  const pausedAt = useTimerStore((s) => s.pausedAt);
+  const cumulativePausedDuration = useTimerStore((s) => s.cumulativePausedDuration);
+  const completedDuration = useTimerStore((s) => s.completedDuration);
 
-  // COMPLETED 状态下使用保留的最终时长
-  if (status === 'COMPLETED') {
-    return completedDuration ?? 0;
-  }
+  return useMemo(() => {
+    if (status === 'COMPLETED') {
+      return completedDuration ?? 0;
+    }
+    if (status === 'IDLE' || !startedAt) return 0;
+    const now = Date.now();
+    const effectiveEnd = pausedAt ?? now;
+    return Math.max(0, effectiveEnd - startedAt - cumulativePausedDuration);
+  }, [status, startedAt, pausedAt, cumulativePausedDuration, completedDuration]);
+}
 
-  if (status === 'IDLE' || !startedAt) return 0;
+// use requestAnimationFrame to drive timer display updates
+// only active when status is RUNNING to avoid unnecessary re-renders
+export function useTimerUpdater() {
+  const status = useTimerStore((s) => s.status);
+  const [elapsed, setElapsed] = useState(0);
 
-  const now = Date.now();
-  const effectiveEnd = pausedAt ?? now;
-  return Math.max(0, effectiveEnd - startedAt - cumulativePausedDuration);
+  useEffect(() => {
+    if (status !== 'RUNNING') {
+      // compute fixed value based on current state when not RUNNING
+      const { startedAt, pausedAt, cumulativePausedDuration, completedDuration, status: s } =
+        useTimerStore.getState();
+      if (s === 'COMPLETED' && completedDuration) {
+        setElapsed(completedDuration);
+      } else if (s === 'PAUSED' && startedAt && pausedAt) {
+        setElapsed(pausedAt - startedAt - cumulativePausedDuration);
+      } else {
+        setElapsed(0);
+      }
+      return;
+    }
+
+    let rafId: number;
+    const update = () => {
+      const { startedAt, cumulativePausedDuration } = useTimerStore.getState();
+      if (!startedAt) {
+        setElapsed(0);
+        return;
+      }
+      setElapsed(Date.now() - startedAt - cumulativePausedDuration);
+      rafId = requestAnimationFrame(update);
+    };
+
+    rafId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(rafId);
+  }, [status]);
+
+  return elapsed;
 }
 
 // Utility hook: get progress percentage (0–1)

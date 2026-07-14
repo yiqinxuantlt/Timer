@@ -38,4 +38,5 @@ export interface AppSettings {
   alwaysOnTop: boolean;
   notificationEnabled: boolean;
   globalShortcutsEnabled: boolean;
+  recentSubjects: string[];
 }

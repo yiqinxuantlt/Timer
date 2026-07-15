@@ -8,7 +8,11 @@ interface ControlsProps {
 }
 
 function Controls({ size = 'normal' }: ControlsProps) {
-  const { status, start, pause, resume, stop } = useTimerStore();
+  const status = useTimerStore((state) => state.status);
+  const start = useTimerStore((state) => state.start);
+  const pause = useTimerStore((state) => state.pause);
+  const resume = useTimerStore((state) => state.resume);
+  const stop = useTimerStore((state) => state.stop);
 
   const handleStart = () => {
     if (status === 'IDLE' || status === 'COMPLETED') {
@@ -26,7 +30,7 @@ function Controls({ size = 'normal' }: ControlsProps) {
 
   const handleStop = () => {
     if (status === 'RUNNING' || status === 'PAUSED') {
-      stop(true);
+      void stop(true);
     }
   };
 

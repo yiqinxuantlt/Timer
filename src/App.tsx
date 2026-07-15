@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useTimer } from './hooks/useTimer';
+import { useWindowManagement } from './hooks/useWindowManagement';
+import { notifyCompletion } from './services/notificationService';
 import { useSettingsStore } from './stores/settingsStore';
-import { useTimerStore, useElapsed, useProgress } from './stores/timerStore';
 import { useStatsStore } from './stores/statsStore';
+import { useTimerStore } from './stores/timerStore';
 import TitleBar from './components/TitleBar';
 import TimerRing from './components/TimerRing';
 import Controls from './components/Controls';
@@ -10,255 +14,79 @@ import ContextMenu from './components/ContextMenu';
 import HistoryModal from './components/HistoryModal';
 import SettingsPanel from './components/SettingsPanel';
 import CompactTimer from './components/CompactTimer';
-import { isTauri } from './lib/platform';
 
 function App() {
-  const { status } = useTimerStore();
-  const elapsed = useElapsed();
-  const progress = useProgress();
-  const { loaded, loadFromStorage } = useStatsStore();
-  const { alwaysOnTop, globalShortcutsEnabled, compactMode } = useSettingsStore();
-  const [, setTick] = useState(0);
-  const [inTauri, setInTauri] = useState(false);
+  const { elapsed, progress, status } = useTimer();
+  const complete = useTimerStore((state) => state.complete);
+  const targetDuration = useTimerStore((state) => state.targetDuration);
+  const subject = useTimerStore((state) => state.subject);
+  const defaultTargetDuration = useSettingsStore((state) => state.defaultTargetDuration);
+  const notificationEnabled = useSettingsStore((state) => state.notificationEnabled);
+  const compactMode = useSettingsStore((state) => state.compactMode);
+  const loaded = useStatsStore((state) => state.loaded);
+  const loadFromStorage = useStatsStore((state) => state.loadFromStorage);
+  const inTauri = useWindowManagement();
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  // Initialize Tauri detection
+  useKeyboardShortcuts(inTauri);
+
   useEffect(() => {
-    isTauri().then(setInTauri).catch(() => setInTauri(false));
-  }, []);
-
-  // Keyboard shortcuts (only in Tauri) - with modifier keys for safety
-  useEffect(() => {
-    if (!inTauri || !globalShortcutsEnabled) return;
-
-    let isRegistered = false;
-    const SHORTCUTS = {
-      playPause: 'Ctrl+Alt+Space',
-      stop: 'Ctrl+Alt+S',
-    };
-
-    const registerShortcuts = async () => {
-      try {
-        const { register } = await import('@tauri-apps/plugin-global-shortcut');
-        const { start, pause, resume, stop } = useTimerStore.getState();
-
-        // Ctrl+Alt+Space: 开始或暂停
-        await register(SHORTCUTS.playPause, () => {
-          const currentStatus = useTimerStore.getState().status;
-          if (currentStatus === 'IDLE' || currentStatus === 'COMPLETED') {
-            start();
-          } else if (currentStatus === 'RUNNING') {
-            pause();
-          } else if (currentStatus === 'PAUSED') {
-            resume();
-          }
-        });
-
-        // Ctrl+Alt+S: 停止
-        await register(SHORTCUTS.stop, () => {
-          const currentStatus = useTimerStore.getState().status;
-          if (currentStatus === 'RUNNING' || currentStatus === 'PAUSED') {
-            stop(true);
-          }
-        });
-
-        isRegistered = true;
-      } catch (error) {
-        console.error('Failed to register shortcuts:', error);
-      }
-    };
-
-    registerShortcuts();
-
-    return () => {
-      if (isRegistered) {
-        import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => {
-          unregister(SHORTCUTS.playPause).catch(() => {});
-          unregister(SHORTCUTS.stop).catch(() => {});
-        });
-      }
-    };
-  }, [inTauri, globalShortcutsEnabled]);
-
-  // Desktop notifications (only in Tauri) — triggered on COMPLETED status
-  useEffect(() => {
-    if (!inTauri) return;
-    if (status !== 'COMPLETED') return;
-
-    const sendCompletionNotification = async () => {
-      try {
-        const subject = useTimerStore.getState().subject;
-        const { notificationEnabled } = useSettingsStore.getState();
-        if (!notificationEnabled) return;
-
-        const { isPermissionGranted, requestPermission, sendNotification } =
-          await import('@tauri-apps/plugin-notification');
-
-        let granted = await isPermissionGranted();
-        if (!granted) {
-          const permission = await requestPermission();
-          granted = permission === 'granted';
-        }
-        if (granted) {
-          sendNotification({
-            title: '学习计时完成！',
-            body: `科目：${subject} — 专注时光已结束，休息一下吧 🌿`,
-          });
-        }
-      } catch (error) {
-        console.error('Failed to send notification:', error);
-      }
-    };
-
-    sendCompletionNotification();
-  }, [status, inTauri]);
-
-  // Drive timer display updates with minimal interval
-  // Also detect when target duration is reached → auto-complete
-  useEffect(() => {
-    if (status !== 'RUNNING') return;
-
-    const interval = setInterval(() => {
-      setTick((n) => n + 1);
-
-      // Auto-complete when elapsed reaches target duration
-      const { startedAt, cumulativePausedDuration, pausedAt, targetDuration } =
-        useTimerStore.getState();
-      if (!startedAt) return;
-      const now = Date.now();
-      const effectiveEnd = pausedAt ?? now;
-      const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
-      if (elapsed >= targetDuration) {
-        useTimerStore.getState().complete();
-      }
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [status]);
-
-  // Load data on mount
-  useEffect(() => {
-    if (!loaded) {
-      loadFromStorage();
-    }
-    // 恢复计时状态并检查有效性
+    if (!loaded) void loadFromStorage();
     useTimerStore.getState().restoreFromPersisted();
-  }, [loaded, loadFromStorage]);
+  }, [loadFromStorage, loaded]);
 
-  // 窗口关闭时保存计时状态（Tauri 环境）
-  // 使用 ref 避免重复注册监听器
   useEffect(() => {
-    if (!inTauri) return;
+    if (status === 'IDLE' || status === 'COMPLETED') {
+      useTimerStore.getState().setTargetDuration(defaultTargetDuration);
+    }
+  }, [defaultTargetDuration, status]);
 
-    let unlistenFn: (() => void) | null = null;
-
-    const setupCloseHandler = async () => {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      const appWindow = getCurrentWindow();
-
-      unlistenFn = await appWindow.onCloseRequested(async (event) => {
-        const { status, startedAt, pausedAt, cumulativePausedDuration, subject, targetDuration } =
-          useTimerStore.getState();
-
-        // 如果有正在进行的计时，阻止关闭并保存
-        if ((status === 'RUNNING' || status === 'PAUSED') && startedAt) {
-          // 阻止默认关闭行为
-          event.preventDefault();
-
-          try {
-            const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
-            const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
-
-            if (elapsed > 0) {
-              await useStatsStore.getState().addSession({
-                subject,
-                startedAt,
-                endedAt: effectiveEnd,
-                duration: elapsed,
-                targetDuration,
-              });
-            }
-
-            useTimerStore.setState({
-              status: 'IDLE',
-              startedAt: null,
-              pausedAt: null,
-              cumulativePausedDuration: 0,
-            });
-          } catch (error) {
-            console.error('Failed to save session on close:', error);
-          }
-
-          // 使用 destroy() 强制关闭窗口，避免再次触发 onCloseRequested
-          appWindow.destroy();
-        }
-        // 如果没有正在计时，不调用 event.preventDefault()，允许默认关闭行为
-      });
-    };
-
-    setupCloseHandler();
-
-    return () => {
-      unlistenFn?.();
-    };
-  }, [inTauri]);
-
-  // Apply always on top (only in Tauri)
   useEffect(() => {
-    if (!inTauri) return;
-    const applyAlwaysOnTop = async () => {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      const appWindow = getCurrentWindow();
-      appWindow.setAlwaysOnTop(alwaysOnTop).catch(console.error);
-    };
-    applyAlwaysOnTop();
-  }, [alwaysOnTop, inTauri]);
+    if (status === 'RUNNING' && targetDuration > 0 && elapsed >= targetDuration) {
+      void complete();
+    }
+  }, [complete, elapsed, status, targetDuration]);
 
-  // Resize window when compact mode toggles (only in Tauri)
   useEffect(() => {
-    if (!inTauri) return;
-    const resizeWindow = async () => {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      const { LogicalSize } = await import('@tauri-apps/api/window');
-      const appWindow = getCurrentWindow();
-      if (compactMode) {
-        await appWindow.setSize(new LogicalSize(220, 140));
-        await appWindow.setMinSize(new LogicalSize(220, 140));
-      } else {
-        await appWindow.setSize(new LogicalSize(320, 420));
-        await appWindow.setMinSize(new LogicalSize(320, 280));
-      }
-    };
-    resizeWindow();
-  }, [compactMode, inTauri]);
+    if (!inTauri || status !== 'COMPLETED' || !notificationEnabled) return;
+    void notifyCompletion(subject);
+  }, [inTauri, notificationEnabled, status, subject]);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
+  const handleContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY });
   };
 
-  const closeContextMenu = () => {
-    setContextMenu(null);
-  };
+  const closeContextMenu = () => setContextMenu(null);
+  const containerClass = [
+    'app-container',
+    status === 'RUNNING' ? 'app-running' : '',
+    status === 'PAUSED' ? 'app-paused' : '',
+    status === 'COMPLETED' ? 'app-completed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  const containerClass = `app-container ${status === 'RUNNING' ? 'app-running' : ''} ${status === 'PAUSED' ? 'app-paused' : ''} ${status === 'COMPLETED' ? 'app-completed' : ''}`;
+  if (compactMode) return <CompactTimer />;
 
-  return compactMode ? (
-    <CompactTimer />
-  ) : (
+  return (
     <div className={containerClass} onContextMenu={handleContextMenu}>
-      <TitleBar onOpenSettings={() => setSettingsOpen(true)} onOpenHistory={() => setHistoryOpen(true)} />
+      <TitleBar
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
+      />
 
-      <div className="main-content">
-        <div className="timer-section">
+      <main className="main-content">
+        <section className="timer-section" aria-label="计时器">
           <TimerRing progress={progress} status={status} elapsed={elapsed} />
-        </div>
+        </section>
 
         <Controls />
         <TodayStats />
-      </div>
+      </main>
 
       <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <HistoryModal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />

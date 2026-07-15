@@ -126,6 +126,17 @@
   color: var(--text-primary);
 }
 
+.durationButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.durationButton:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .durationButtonActive {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   color: white;
@@ -190,6 +201,11 @@
 
 .toggle:hover {
   border-color: var(--glass-border-hover);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .toggleActive {

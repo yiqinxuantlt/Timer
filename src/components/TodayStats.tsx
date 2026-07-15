@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useStatsStore } from '../stores/statsStore';
-import { formatDuration } from '../stores/timerStore';
+import { formatDuration } from '../utils/format';
 import styles from './TodayStats.module.css';
 
 function TodayStats() {

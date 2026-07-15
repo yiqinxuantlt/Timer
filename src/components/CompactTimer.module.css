@@ -59,6 +59,11 @@
   color: var(--text-primary);
 }
 
+.titleButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
 .titleButton.close:hover {
   background: var(--danger);
   color: white;
@@ -88,7 +93,7 @@
 }
 
 .timeDisplay {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: var(--weight-normal);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;

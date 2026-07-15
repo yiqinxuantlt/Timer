@@ -1,13 +1,13 @@
-import { memo } from 'react';
-import styles from './TimerRing.module.css';
+import { memo, useId } from 'react';
 import type { TimerStatus } from '../types';
-import { useTimerUpdater, formatElapsed } from '../stores/timerStore';
+import { formatElapsed } from '../utils/format';
+import styles from './TimerRing.module.css';
 
 interface TimerRingProps {
   progress: number;
   size?: 'normal' | 'compact' | 'mini';
   status?: TimerStatus;
-  elapsed?: number; // 新增：用于在圆环内显示时间
+  elapsed?: number;
 }
 
 const RADIUS = 70;
@@ -18,82 +18,78 @@ const STATUS_LABELS: Record<TimerStatus, string> = {
   RUNNING: '专注中',
   PAUSED: '已暂停',
   COMPLETED: '已完成',
+  CANCELLED: '已停止',
 };
 
-function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed: elapsedProp }: TimerRingProps) {
-  // 使用 rAF 驱动的 elapsed 更新（仅在 RUNNING 状态有效）
-  const rafElapsed = useTimerUpdater();
-
-  // 优先使用 prop 传入的 elapsed（用于非 RUNNING 状态）
-  // 如果没有 prop 或状态为 RUNNING，使用 rAF 驱动的值
-  const elapsed = (status === 'RUNNING' || elapsedProp === undefined) ? rafElapsed : elapsedProp;
-
-  const offset = CIRCUMFERENCE * (1 - progress);
-
+function TimerRing({
+  progress,
+  size = 'normal',
+  status = 'IDLE',
+  elapsed = 0,
+}: TimerRingProps) {
+  const id = useId().replace(/:/g, '');
+  const gradientId = `progressGradient${id}`;
+  const activeGradientId = `progressGradientActive${id}`;
+  const completedGradientId = `progressGradientCompleted${id}`;
+  const offset = CIRCUMFERENCE * (1 - Math.min(Math.max(progress, 0), 1));
   const containerClass =
-    size === 'compact' ? styles.containerCompact
-    : size === 'mini' ? styles.containerMini
-    : styles.container;
-
-  // 状态 class 组合：基础样式 + 状态覆盖
+    size === 'compact'
+      ? styles.containerCompact
+      : size === 'mini'
+        ? styles.containerMini
+        : styles.container;
   const progressClass = `${styles.progressCircle} ${
-    status === 'COMPLETED' ? styles.progressCircleCompleted
-    : status === 'RUNNING' ? styles.progressCircleRunning
-    : ''
+    status === 'COMPLETED'
+      ? styles.progressCircleCompleted
+      : status === 'RUNNING'
+        ? styles.progressCircleRunning
+        : ''
   }`;
-
   const svgSize = size === 'mini' ? 64 : size === 'compact' ? 80 : 160;
-
-  // 仅在 normal 模式下显示圆环内文字
-  const showInnerContent = size === 'normal';
 
   return (
     <div className={containerClass}>
-      <svg
-        className={styles.svg}
-        width={svgSize}
-        height={svgSize}
-        viewBox="0 0 160 160"
-      >
+      <svg className={styles.svg} width={svgSize} height={svgSize} viewBox="0 0 160 160">
         <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#6366f1" />
             <stop offset="100%" stopColor="#8b5cf6" />
           </linearGradient>
-          <linearGradient id="progressGradientActive" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={activeGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#6366f1" />
             <stop offset="100%" stopColor="#a78bfa" />
           </linearGradient>
-          <linearGradient id="progressGradientCompleted" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={completedGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#10b981" />
             <stop offset="100%" stopColor="#34d399" />
           </linearGradient>
         </defs>
-        <circle
-          className={styles.bgCircle}
-          cx="80"
-          cy="80"
-          r={RADIUS}
-        />
+        <circle className={styles.bgCircle} cx="80" cy="80" r={RADIUS} />
         <circle
           className={progressClass}
           cx="80"
           cy="80"
           r={RADIUS}
           style={{
+            stroke: status === 'COMPLETED'
+              ? `url(#${completedGradientId})`
+              : status === 'RUNNING'
+                ? `url(#${activeGradientId})`
+                : `url(#${gradientId})`,
             strokeDasharray: CIRCUMFERENCE,
             strokeDashoffset: offset,
           }}
         />
       </svg>
 
-      {/* 圆环内部内容：时间 + 状态标签 */}
-      {showInnerContent && (
+      {size === 'normal' && (
         <div className={styles.innerContent}>
-          <span className={styles.innerTime}>
-            {formatElapsed(elapsed)}
-          </span>
-          <span className={`${styles.innerLabel} ${styles[`innerLabel${status.charAt(0)}${status.slice(1).toLowerCase()}`]}`}>
+          <span className={styles.innerTime}>{formatElapsed(elapsed)}</span>
+          <span
+            className={`${styles.innerLabel} ${
+              styles[`innerLabel${status.charAt(0)}${status.slice(1).toLowerCase()}`]
+            }`}
+          >
             {STATUS_LABELS[status]}
           </span>
         </div>

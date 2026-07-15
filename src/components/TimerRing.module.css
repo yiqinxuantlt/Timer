@@ -1,49 +1,42 @@
 .container {
   position: relative;
-  width: 160px;
-  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 160px;
+  height: 160px;
 }
 
 .svg {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   transform: rotate(-90deg);
 }
 
 .bgCircle {
   fill: none;
-  stroke: rgba(99, 102, 241, 0.15);
+  stroke: rgba(129, 140, 248, 0.17);
   stroke-width: 4;
 }
 
 .progressCircle {
   fill: none;
-  stroke: url(#progressGradient);
   stroke-width: 4;
   stroke-linecap: round;
-  transition: stroke-dashoffset var(--duration-normal) var(--ease-out);
-  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4));
+  transition: stroke-dashoffset 300ms var(--ease-out);
+  filter: drop-shadow(0 0 7px rgba(99, 102, 241, 0.38));
 }
 
-/* 运行状态：覆盖颜色、阴影和动画 */
 .progressCircleRunning {
-  stroke: url(#progressGradientActive);
-  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
-  animation: pulseGlow 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(129, 140, 248, 0.52));
+  animation: pulseGlow 2.4s ease-in-out infinite;
 }
 
-/* 完成状态：覆盖颜色、阴影和动画 */
 .progressCircleCompleted {
-  stroke: url(#progressGradientCompleted);
-  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.8));
-  animation: completePop 0.5s var(--ease-out);
+  filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.58));
+  animation: completePop 450ms var(--ease-out);
 }
 
-/* 圆环内部内容 */
 .innerContent {
   position: relative;
   z-index: 1;
@@ -51,91 +44,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   pointer-events: none;
 }
 
 .innerTime {
-  font-size: 36px;
+  color: var(--text-primary);
+  font-size: 30px;
   font-weight: var(--weight-normal);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
+  letter-spacing: -0.04em;
   line-height: 1;
 }
 
 .innerLabel {
-  font-size: var(--text-sm);
   color: var(--text-muted);
-  text-transform: lowercase;
+  font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
 }
 
-.innerLabelRunning {
-  color: var(--accent-tertiary);
-  animation: labelPulse 2s ease-in-out infinite;
-}
+.innerLabelRunning { color: var(--accent-tertiary); }
+.innerLabelPaused { color: var(--warning); }
+.innerLabelCompleted { color: var(--success); }
 
-.innerLabelPaused {
-  color: var(--warning);
-}
-
-.innerLabelCompleted {
-  color: var(--success);
-}
-
-@keyframes labelPulse {
-  0%, 100% {
-    opacity: 0.8;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* Pulse glow animation for running state */
 @keyframes pulseGlow {
-  0%, 100% {
-    filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6));
-    stroke-width: 4;
-  }
-  50% {
-    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.9));
-    stroke-width: 4.5;
-  }
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
 }
 
-/* Completion pop animation */
 @keyframes completePop {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1.02);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0.97); opacity: 0.72; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* Background circle subtle breathing */
-.bgCircle {
-  animation: bgBreath 4s ease-in-out infinite;
-}
-
-@keyframes bgBreath {
-  0%, 100% {
-    stroke: rgba(99, 102, 241, 0.15);
-  }
-  50% {
-    stroke: rgba(99, 102, 241, 0.25);
-  }
-}
-
-/* Compact mode */
 .containerCompact {
   width: 80px;
   height: 80px;
@@ -146,22 +88,6 @@
   height: 80px;
 }
 
-.containerCompact .progressCircleRunning {
-  animation: pulseGlowCompact 2s ease-in-out infinite;
-}
-
-@keyframes pulseGlowCompact {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
-    stroke-width: 4;
-  }
-  50% {
-    filter: drop-shadow(0 0 14px rgba(99, 102, 241, 0.9));
-    stroke-width: 4.5;
-  }
-}
-
-/* Mini mode (for horizontal compact layout) */
 .containerMini {
   width: 64px;
   height: 64px;
@@ -172,27 +98,9 @@
   height: 64px;
 }
 
-.containerMini .bgCircle {
-  stroke-width: 3;
-}
-
+.containerMini .bgCircle,
 .containerMini .progressCircle,
 .containerMini .progressCircleRunning,
 .containerMini .progressCircleCompleted {
   stroke-width: 3;
-}
-
-.containerMini .progressCircleRunning {
-  animation: pulseGlowMini 2s ease-in-out infinite;
-}
-
-@keyframes pulseGlowMini {
-  0%, 100% {
-    filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6));
-    stroke-width: 3;
-  }
-  50% {
-    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.9));
-    stroke-width: 3.5;
-  }
 }

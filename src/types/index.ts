@@ -1,4 +1,5 @@
-export type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED';
+export type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+export type SessionStatus = 'completed' | 'cancelled';
 
 export interface TimerState {
   status: TimerStatus;
@@ -17,6 +18,7 @@ export interface FocusSession {
   endedAt: number;
   duration: number;
   targetDuration: number;
+  status: SessionStatus;
 }
 
 export interface StudyRecord {
@@ -26,6 +28,7 @@ export interface StudyRecord {
   endedAt: number;
   duration_seconds: number;
   targetDuration: number;
+  status: SessionStatus;
 }
 
 export interface StudyData {
@@ -34,7 +37,7 @@ export interface StudyData {
 }
 
 export interface AppSettings {
-  targetDuration: number;
+  defaultTargetDuration: number;
   alwaysOnTop: boolean;
   notificationEnabled: boolean;
   globalShortcutsEnabled: boolean;

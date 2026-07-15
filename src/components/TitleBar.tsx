@@ -1,6 +1,7 @@
 import { memo, useEffect, useState, useRef } from 'react';
 import { Minus, X, Pin, Settings, History, ChevronDown } from 'lucide-react';
 import { isTauri } from '../lib/platform';
+import { closeWindow, minimizeWindow } from '../services/windowService';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTimerStore } from '../stores/timerStore';
 import styles from './TitleBar.module.css';
@@ -54,16 +55,12 @@ function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
 
   const handleMinimize = async () => {
     if (!inTauri) return;
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    const appWindow = getCurrentWindow();
-    await appWindow.minimize();
+    await minimizeWindow();
   };
 
   const handleClose = async () => {
     if (!inTauri) return;
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    const appWindow = getCurrentWindow();
-    await appWindow.close();
+    await closeWindow();
   };
 
   const isRunning = status === 'RUNNING' || status === 'PAUSED';

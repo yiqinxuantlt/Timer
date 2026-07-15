@@ -1,15 +1,16 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { useState, useEffect, useMemo } from 'react';
-import type { TimerStatus, TimerState } from '../types';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import type { FocusSession, TimerState } from '../types';
+import { MIN_VALID_DURATION_MS } from '../utils/stats';
+import { calculateElapsed, getSessionEnd, isTimerActive } from '../utils/timer';
 import { useStatsStore } from './statsStore';
 
 interface TimerActions {
   start: (subject?: string) => void;
   pause: () => void;
   resume: () => void;
-  stop: (save?: boolean) => void;
-  complete: () => void;
+  stop: (save?: boolean) => Promise<void>;
+  complete: () => Promise<void>;
   reset: () => void;
   setTargetDuration: (ms: number) => void;
   setSubject: (subject: string) => void;
@@ -21,151 +22,128 @@ type TimerStore = TimerState & TimerActions;
 const initialState: TimerState = {
   status: 'IDLE',
   startedAt: null,
-  targetDuration: 3600000,
+  targetDuration: 3_600_000,
   pausedAt: null,
   cumulativePausedDuration: 0,
   subject: '学习',
   completedDuration: null,
 };
 
+function createSession(state: TimerState, endedAt: number): Omit<FocusSession, 'id'> | null {
+  if (!state.startedAt) return null;
+
+  return {
+    subject: state.subject.trim() || '学习',
+    startedAt: state.startedAt,
+    endedAt,
+    duration: calculateElapsed(state, endedAt),
+    targetDuration: state.targetDuration,
+    status: 'completed',
+  };
+}
+
 export const useTimerStore = create<TimerStore>()(
   persist(
     (set, get) => ({
       ...initialState,
 
-      start: (subject?: string) => {
-        const now = Date.now();
+      start: (subject) => {
+        const current = get();
+        if (current.status !== 'IDLE' && current.status !== 'COMPLETED') return;
+
         set({
           status: 'RUNNING',
-          startedAt: now,
+          startedAt: Date.now(),
           pausedAt: null,
           cumulativePausedDuration: 0,
-          subject: subject ?? get().subject,
+          subject: subject?.trim() || current.subject || '学习',
           completedDuration: null,
         });
       },
 
       pause: () => {
-        const { status } = get();
-        if (status !== 'RUNNING') return;
-        set({
-          status: 'PAUSED',
-          pausedAt: Date.now(),
-        });
+        if (get().status !== 'RUNNING') return;
+        set({ status: 'PAUSED', pausedAt: Date.now() });
       },
 
       resume: () => {
-        const { pausedAt, cumulativePausedDuration, status } = get();
-        if (status !== 'PAUSED' || !pausedAt) return;
+        const { status, pausedAt, cumulativePausedDuration } = get();
+        if (status !== 'PAUSED' || pausedAt === null) return;
 
-        const pauseDuration = Date.now() - pausedAt;
         set({
           status: 'RUNNING',
           pausedAt: null,
-          cumulativePausedDuration: cumulativePausedDuration + pauseDuration,
+          cumulativePausedDuration: cumulativePausedDuration + (Date.now() - pausedAt),
         });
       },
 
-      stop: (save = true) => {
-        const { status, startedAt, pausedAt, cumulativePausedDuration, subject, targetDuration } = get();
-        if (status !== 'RUNNING' && status !== 'PAUSED') return;
+      stop: async (save = true) => {
+        const current = get();
+        if (!isTimerActive(current.status) || !current.startedAt) return;
 
-        if (save && startedAt) {
-          // 暂停状态下，有效结束时间取 pausedAt 而非 Date.now()
-          const effectiveEnd = status === 'PAUSED' && pausedAt ? pausedAt : Date.now();
-          const elapsed = effectiveEnd - startedAt - cumulativePausedDuration;
-          if (elapsed > 0) {
-            useStatsStore.getState().addSession({
-              subject,
-              startedAt,
-              endedAt: effectiveEnd,
-              duration: elapsed,
-              targetDuration,
-            });
-          }
-        }
+        const endedAt = getSessionEnd(current);
+        const session = endedAt === null ? null : createSession(current, endedAt);
+
         set({
-          status: 'IDLE',
+          status: 'CANCELLED',
           startedAt: null,
           pausedAt: null,
           cumulativePausedDuration: 0,
+          completedDuration: session?.duration ?? 0,
         });
+
+        if (save && session && session.duration >= MIN_VALID_DURATION_MS) {
+          await useStatsStore.getState().addSession(session);
+        }
+
+        set({ status: 'IDLE', completedDuration: null });
       },
 
-      complete: () => {
-        const { status, startedAt, cumulativePausedDuration, subject, targetDuration } = get();
-        if (status !== 'RUNNING') return;
-        if (!startedAt) return;
+      complete: async () => {
+        const current = get();
+        if (current.status !== 'RUNNING' || !current.startedAt) return;
 
-        const elapsed = Date.now() - startedAt - cumulativePausedDuration;
-        if (elapsed > 0) {
-          useStatsStore.getState().addSession({
-            subject,
-            startedAt,
-            endedAt: Date.now(),
-            duration: elapsed,
-            targetDuration,
-          });
-        }
+        const endedAt = Date.now();
+        const session = createSession(current, endedAt);
+        const completedDuration = session?.duration ?? 0;
+
         set({
           status: 'COMPLETED',
           startedAt: null,
           pausedAt: null,
           cumulativePausedDuration: 0,
-          completedDuration: elapsed,
+          completedDuration,
         });
+
+        if (session && session.duration >= MIN_VALID_DURATION_MS) {
+          await useStatsStore.getState().addSession(session);
+        }
       },
 
-      reset: () => {
+      reset: () =>
         set({
           status: 'IDLE',
           startedAt: null,
           pausedAt: null,
           cumulativePausedDuration: 0,
           completedDuration: null,
-        });
-      },
+        }),
 
-      setTargetDuration: (ms) => set({ targetDuration: ms }),
+      setTargetDuration: (ms) => {
+        if (ms > 0 && !isTimerActive(get().status)) set({ targetDuration: ms });
+      },
       setSubject: (subject) => set({ subject }),
 
-      // 从持久化恢复时，检查计时状态是否有效
       restoreFromPersisted: () => {
-        const { status, startedAt, pausedAt, cumulativePausedDuration } = get();
-
-        // 如果正在运行但已暂停超过 24 小时，重置为 IDLE
-        if (status === 'RUNNING' && startedAt) {
-          const now = Date.now();
-          const elapsed = now - startedAt - cumulativePausedDuration;
-          // 如果计时超过 24 小时，认为已过期
-          if (elapsed > 24 * 60 * 60 * 1000) {
-            set({
-              status: 'IDLE',
-              startedAt: null,
-              pausedAt: null,
-              cumulativePausedDuration: 0,
-            });
-          }
-        }
-
-        // 如果暂停状态超过 24 小时，重置为 IDLE
-        if (status === 'PAUSED' && pausedAt) {
-          const now = Date.now();
-          if (now - pausedAt > 24 * 60 * 60 * 1000) {
-            set({
-              status: 'IDLE',
-              startedAt: null,
-              pausedAt: null,
-              cumulativePausedDuration: 0,
-            });
-          }
+        const { status } = get();
+        if (status === 'COMPLETED' || status === 'CANCELLED') {
+          set({ ...initialState, targetDuration: get().targetDuration, subject: get().subject });
         }
       },
     }),
     {
       name: 'study-timer-state',
       storage: createJSONStorage(() => localStorage),
-      // 排除 completedDuration，不需要持久化
       partialize: (state) => ({
         status: state.status,
         startedAt: state.startedAt,
@@ -177,100 +155,3 @@ export const useTimerStore = create<TimerStore>()(
     }
   )
 );
-
-// Utility hook: get elapsed time with fine-grained selectors
-export function useElapsed(): number {
-  const status = useTimerStore((s) => s.status);
-  const startedAt = useTimerStore((s) => s.startedAt);
-  const pausedAt = useTimerStore((s) => s.pausedAt);
-  const cumulativePausedDuration = useTimerStore((s) => s.cumulativePausedDuration);
-  const completedDuration = useTimerStore((s) => s.completedDuration);
-
-  return useMemo(() => {
-    if (status === 'COMPLETED') {
-      return completedDuration ?? 0;
-    }
-    if (status === 'IDLE' || !startedAt) return 0;
-    const now = Date.now();
-    const effectiveEnd = pausedAt ?? now;
-    return Math.max(0, effectiveEnd - startedAt - cumulativePausedDuration);
-  }, [status, startedAt, pausedAt, cumulativePausedDuration, completedDuration]);
-}
-
-// use requestAnimationFrame to drive timer display updates
-// only active when status is RUNNING to avoid unnecessary re-renders
-export function useTimerUpdater() {
-  const status = useTimerStore((s) => s.status);
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    if (status !== 'RUNNING') {
-      // compute fixed value based on current state when not RUNNING
-      const { startedAt, pausedAt, cumulativePausedDuration, completedDuration, status: s } =
-        useTimerStore.getState();
-      if (s === 'COMPLETED' && completedDuration) {
-        setElapsed(completedDuration);
-      } else if (s === 'PAUSED' && startedAt && pausedAt) {
-        setElapsed(pausedAt - startedAt - cumulativePausedDuration);
-      } else {
-        setElapsed(0);
-      }
-      return;
-    }
-
-    let rafId: number;
-    const update = () => {
-      const { startedAt, cumulativePausedDuration } = useTimerStore.getState();
-      if (!startedAt) {
-        setElapsed(0);
-        return;
-      }
-      setElapsed(Date.now() - startedAt - cumulativePausedDuration);
-      rafId = requestAnimationFrame(update);
-    };
-
-    rafId = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(rafId);
-  }, [status]);
-
-  return elapsed;
-}
-
-// Utility hook: get progress percentage (0–1)
-export function useProgress(): number {
-  const targetDuration = useTimerStore((s) => s.targetDuration);
-  const elapsed = useElapsed();
-
-  if (targetDuration <= 0) return 0;
-  return Math.min(elapsed / targetDuration, 1);
-}
-
-// Utility hook: get current timer status
-export function useTimerStatus(): TimerStatus {
-  return useTimerStore((s) => s.status);
-}
-
-// Helper: format elapsed ms to HH:MM:SS
-export function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-// Helper: format elapsed ms to short form (e.g. "1h 30m", "42s")
-export function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-
-  if (h > 0) {
-    return `${h}h ${m}m`;
-  }
-  if (m > 0) {
-    return `${m}m ${s}s`;
-  }
-  return `${s}s`;
-}

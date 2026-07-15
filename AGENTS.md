@@ -1,68 +1,60 @@
-# AGENTS.md — Study Timer (Tauri 2)
+# Study Timer — Tauri 2
 
-## Quick Start
+## Quick start
 
 ```bash
-# Frontend dev (browser only)
-npm run dev
-
-# Full desktop app (requires Rust toolchain)
-npm run tauri:dev
-
-# Production build
-npm run tauri:build
+npm run dev          # browser preview
+npm run tauri:dev    # full desktop app; requires Rust
+npm run build        # frontend build
+npm run tauri:build  # desktop release build
 ```
-
-**⚠️ Rust required for `tauri:dev` / `tauri:build`.** If `cargo` is missing, `tauri dev` fails silently. Frontend-only dev works without Rust.
 
 ## Architecture
 
-- **Frontend**: React 18 + TypeScript + Vite + Zustand
-- **Backend**: Rust (Tauri 2) — stores data in `study_data.json` at app data dir
-- **State**: 3 Zustand stores — `timerStore`, `statsStore`, `settingsStore`
-- **Data flow**: Frontend → Tauri IPC → Rust `lib.rs` → JSON file
+- Frontend: React 18, TypeScript, Vite, Zustand
+- Desktop: Tauri 2 with a small Rust JSON persistence layer
+- Stores: `timerStore`, `statsStore`, `settingsStore`
+- Services: `storageService`, `windowService`, `notificationService`
+- Hooks: `useTimer`, `useKeyboardShortcuts`, `useWindowManagement`
 
-## Key Files
+## Key files
 
-| Path | Purpose |
-|---|---|
-| `src-tauri/src/lib.rs` | Rust backend — all Tauri commands |
-| `src/App.tsx` | Main React component, keyboard shortcuts, notifications |
-| `src/stores/timerStore.ts` | Timer state machine (IDLE → RUNNING → PAUSED → COMPLETED) |
-| `src/stores/statsStore.ts` | Session history, today total, streak calc |
-| `src/stores/settingsStore.ts` | User prefs (persisted via zustand/localStorage) |
-| `src/types/index.ts` | Shared TypeScript interfaces |
+| Path | Responsibility |
+| --- | --- |
+| `src/App.tsx` | Page composition and lifecycle side effects |
+| `src/stores/timerStore.ts` | Timer finite-state machine and session boundaries |
+| `src/stores/statsStore.ts` | Session history and derived statistics |
+| `src/services/storageService.ts` | Tauri IPC persistence and browser fallback |
+| `src/utils/timer.ts` | Timestamp-based elapsed time and progress |
+| `src/utils/stats.ts` | Valid-session, today-total and streak rules |
+| `src-tauri/src/lib.rs` | Atomic JSON read/write commands |
 
-## Timer Logic (CRITICAL)
+## Timer rules (critical)
 
-**Never use `setInterval` to decrement seconds.** The timer uses timestamp-based calculation:
+Never use `setInterval` to decrement seconds. Calculate elapsed time from timestamps:
 
 ```typescript
-// Correct: calculate from timestamps
 const elapsed = Date.now() - startedAt - cumulativePausedDuration;
-
-// Wrong: do not decrement a counter
-elapsedSeconds--;
 ```
 
-This handles system sleep, tab backgrounding, and drift correctly. See `timerStore.ts` for implementation.
+The state machine is `IDLE → RUNNING → PAUSED → RUNNING`, with terminal `COMPLETED` and `CANCELLED` states. Active timer timestamps are persisted so a restart can recover the session.
 
-## Tauri ↔ Frontend Bridge
+## Persistence and statistics
 
-- Frontend detects Tauri via `typeof window !== 'undefined' && '__TAURI__' in window`
-- Tauri APIs are lazy-imported: `await import('@tauri-apps/api/window')`
-- Commands: `get_study_data`, `save_study_session`, `save_study_data`, `clear_study_data`
+- Tauri commands: `get_study_data` and `save_study_data`.
+- Desktop data: `%APPDATA%/study-timer/study_data.json`.
+- Browser fallback: `study-timer-sessions` in localStorage.
+- Rust writes through a temporary file and rename for atomic replacement.
+- Only completed sessions lasting at least 60 seconds affect statistics.
+- Today and streak dates are based on the session start date.
 
-## Window Config (tauri.conf.json)
+## Window and platform behavior
 
-- Size: 320×420 (normal), 160×200 (compact mode)
-- `decorations: false`, `transparent: true`, `alwaysOnTop: true`
-- CSP: `null` (disabled for dev — re-enable before production release)
+- Normal window: 320 × 420; compact window: 220 × 140.
+- Decorations are disabled, transparency is enabled, and always-on-top defaults to true.
+- Tauri-only APIs are dynamically imported and guarded by platform detection.
+- Global shortcuts are registered only when enabled and are cleaned up on unmount.
 
-## Gotchas
+## Verification
 
-- **Rust build**: `src-tauri/Cargo.toml` uses `edition = "2021"`, needs `chrono` + `uuid` crates
-- **Data path**: Rust saves to `%APPDATA%/study-timer/study_data.json` (Windows)
-- **Dual persistence**: Frontend saves to localStorage AND Tauri backend (if available)
-- **Global shortcuts**: Only registered in Tauri env (Space = play/pause, Escape = stop)
-- **Compact mode**: Toggles window size via `@tauri-apps/api/window`
+Run `npm run typecheck`, `npm run build`, and `cargo check --manifest-path src-tauri/Cargo.toml` before declaring changes complete. Also follow `.agents/skills/desktop-app-qa/SKILL.md` for manual timer, persistence, window, DPI, and interaction checks.

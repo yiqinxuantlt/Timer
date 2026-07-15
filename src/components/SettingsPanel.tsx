@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { X, Bell, Timer, Layers } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useTimerStore } from '../stores/timerStore';
 import styles from './SettingsPanel.module.css';
 
 interface SettingsPanelProps {
@@ -18,16 +19,16 @@ const DURATION_OPTIONS = [
 ];
 
 function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
-  const {
-    targetDuration,
-    setTargetDuration,
-    alwaysOnTop,
-    toggleAlwaysOnTop,
-    notificationEnabled,
-    toggleNotification,
-    globalShortcutsEnabled,
-    toggleGlobalShortcuts,
-  } = useSettingsStore();
+  const defaultTargetDuration = useSettingsStore((state) => state.defaultTargetDuration);
+  const setDefaultTargetDuration = useSettingsStore((state) => state.setDefaultTargetDuration);
+  const alwaysOnTop = useSettingsStore((state) => state.alwaysOnTop);
+  const toggleAlwaysOnTop = useSettingsStore((state) => state.toggleAlwaysOnTop);
+  const notificationEnabled = useSettingsStore((state) => state.notificationEnabled);
+  const toggleNotification = useSettingsStore((state) => state.toggleNotification);
+  const globalShortcutsEnabled = useSettingsStore((state) => state.globalShortcutsEnabled);
+  const toggleGlobalShortcuts = useSettingsStore((state) => state.toggleGlobalShortcuts);
+  const timerStatus = useTimerStore((state) => state.status);
+  const isTimerActive = timerStatus === 'RUNNING' || timerStatus === 'PAUSED';
 
   if (!isOpen) return null;
 
@@ -56,8 +57,9 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               {DURATION_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
-                  className={`${styles.durationButton} ${targetDuration === opt.value ? styles.durationButtonActive : ''}`}
-                  onClick={() => setTargetDuration(opt.value)}
+                  className={`${styles.durationButton} ${defaultTargetDuration === opt.value ? styles.durationButtonActive : ''}`}
+                  onClick={() => setDefaultTargetDuration(opt.value)}
+                  disabled={isTimerActive}
                 >
                   {opt.label}
                 </button>

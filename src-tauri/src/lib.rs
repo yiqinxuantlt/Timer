@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -15,6 +15,12 @@ struct SessionRecord {
     duration_seconds: u64,
     #[serde(rename = "targetDuration")]
     target_duration: u64,
+    #[serde(default = "default_session_status")]
+    status: String,
+}
+
+fn default_session_status() -> String {
+    "completed".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -75,7 +81,48 @@ fn save_data_atomic(app: &tauri::AppHandle, data: &StudyData) -> Result<(), Comm
     // Write to temp file in same directory (same filesystem → atomic rename)
     let temp_path = path.with_extension("json.tmp");
     fs::write(&temp_path, &json)?;
-    fs::rename(&temp_path, &path)?;
+    replace_file(&temp_path, &path)?;
+    Ok(())
+}
+
+#[cfg(windows)]
+fn replace_file(temp_path: &Path, path: &Path) -> Result<(), CommandError> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+    };
+
+    let temp_path: Vec<u16> = temp_path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let path: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let result = unsafe {
+        MoveFileExW(
+            temp_path.as_ptr(),
+            path.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+
+    if result == 0 {
+        return Err(CommandError {
+            message: std::io::Error::last_os_error().to_string(),
+        });
+    }
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn replace_file(temp_path: &Path, path: &Path) -> Result<(), CommandError> {
+    fs::rename(temp_path, path)?;
     Ok(())
 }
 

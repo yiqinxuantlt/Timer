@@ -1,10 +1,9 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AppSettings } from '../types';
 
 interface SettingsState extends AppSettings {
-  compactMode: boolean;
-  setTargetDuration: (ms: number) => void;
+  setDefaultTargetDuration: (ms: number) => void;
   toggleAlwaysOnTop: () => void;
   toggleNotification: () => void;
   toggleGlobalShortcuts: () => void;
@@ -12,50 +11,94 @@ interface SettingsState extends AppSettings {
   addRecentSubject: (subject: string) => void;
 }
 
-// Default settings
+interface PersistedSettings {
+  defaultTargetDuration?: unknown;
+  targetDuration?: unknown;
+  alwaysOnTop?: unknown;
+  notificationEnabled?: unknown;
+  globalShortcutsEnabled?: unknown;
+  recentSubjects?: unknown;
+  compactMode?: unknown;
+}
+
 const defaultSettings: AppSettings = {
-  targetDuration: 3600000,
+  defaultTargetDuration: 3_600_000,
   alwaysOnTop: true,
   notificationEnabled: true,
-  globalShortcutsEnabled: false, // 默认关闭全局快捷键
+  globalShortcutsEnabled: false,
   recentSubjects: [],
   compactMode: false,
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getPersistedSettings(value: unknown): PersistedSettings {
+  if (!isRecord(value)) return {};
+  return value as PersistedSettings;
+}
+
+function getBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function getNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function getSubjects(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((subject): subject is string => typeof subject === 'string') : [];
+}
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
       ...defaultSettings,
 
-      setTargetDuration: (ms) => set({ targetDuration: ms }),
-      toggleAlwaysOnTop: () => {
-        const newOnTop = !get().alwaysOnTop;
-        set({ alwaysOnTop: newOnTop });
-        // Will call Tauri API in Phase 3
+      setDefaultTargetDuration: (ms) => {
+        if (ms > 0) set({ defaultTargetDuration: ms });
       },
-      toggleNotification: () =>
-        set({ notificationEnabled: !get().notificationEnabled }),
+      toggleAlwaysOnTop: () => set({ alwaysOnTop: !get().alwaysOnTop }),
+      toggleNotification: () => set({ notificationEnabled: !get().notificationEnabled }),
       toggleGlobalShortcuts: () =>
         set({ globalShortcutsEnabled: !get().globalShortcutsEnabled }),
-      toggleCompactMode: () =>
-        set({ compactMode: !get().compactMode }),
+      toggleCompactMode: () => set({ compactMode: !get().compactMode }),
 
       addRecentSubject: (subject) => {
         const trimmed = subject.trim();
         if (!trimmed) return;
 
-        const current = get().recentSubjects;
-        // 移除重复项（不区分大小写）
-        const filtered = current.filter(s => s.toLowerCase() !== trimmed.toLowerCase());
-        // 添加到头部，最多保留 5 个
-        const updated = [trimmed, ...filtered].slice(0, 5);
-        set({ recentSubjects: updated });
+        const filtered = get().recentSubjects.filter(
+          (item) => item.toLowerCase() !== trimmed.toLowerCase()
+        );
+        set({ recentSubjects: [trimmed, ...filtered].slice(0, 5) });
       },
     }),
     {
       name: 'study-timer-settings',
+      version: 1,
       storage: createJSONStorage(() => localStorage),
-      // Phase 3 will migrate to Tauri Store
+      migrate: (persistedState) => {
+        const state = getPersistedSettings(persistedState);
+        return {
+          defaultTargetDuration: getNumber(
+            state.defaultTargetDuration ?? state.targetDuration,
+            defaultSettings.defaultTargetDuration
+          ),
+          alwaysOnTop: getBoolean(state.alwaysOnTop, defaultSettings.alwaysOnTop),
+          notificationEnabled: getBoolean(
+            state.notificationEnabled,
+            defaultSettings.notificationEnabled
+          ),
+          globalShortcutsEnabled: getBoolean(
+            state.globalShortcutsEnabled,
+            defaultSettings.globalShortcutsEnabled
+          ),
+          recentSubjects: getSubjects(state.recentSubjects),
+          compactMode: getBoolean(state.compactMode, defaultSettings.compactMode),
+        };
+      },
     }
   )
 );

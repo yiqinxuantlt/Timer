@@ -5,7 +5,7 @@ import {
   calculateStreak,
   calculateTodayTotal,
   calculateTotalDuration,
-  isValidSession,
+  isValidSession
 } from '../utils/stats';
 
 interface StatsState {
@@ -13,6 +13,7 @@ interface StatsState {
   todayTotal: number;
   totalDuration: number;
   currentStreak: number;
+  storageWarning: string | null;
   loaded: boolean;
 
   addSession: (session: Omit<FocusSession, 'id'>) => Promise<boolean>;
@@ -32,7 +33,7 @@ function getDerivedStats(sessions: FocusSession[]) {
   return {
     todayTotal: calculateTodayTotal(sessions),
     totalDuration: calculateTotalDuration(sessions),
-    currentStreak: calculateStreak(sessions),
+    currentStreak: calculateStreak(sessions)
   };
 }
 
@@ -43,6 +44,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   todayTotal: 0,
   totalDuration: 0,
   currentStreak: 0,
+  storageWarning: null,
   loaded: false,
 
   addSession: async (session) => {
@@ -51,7 +53,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
     const sessions = [...get().sessions, newSession];
     set({ sessions, ...getDerivedStats(sessions) });
-    await persistSessions(sessions);
+    const result = await persistSessions(sessions);
+    set({ storageWarning: result.warning });
     return true;
   },
 
@@ -60,12 +63,14 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     if (sessions.length === get().sessions.length) return;
 
     set({ sessions, ...getDerivedStats(sessions) });
-    await persistSessions(sessions);
+    const result = await persistSessions(sessions);
+    set({ storageWarning: result.warning });
   },
 
   clearAllSessions: async () => {
     set({ sessions: [], todayTotal: 0, totalDuration: 0, currentStreak: 0 });
-    await persistSessions([]);
+    const result = await persistSessions([]);
+    set({ storageWarning: result.warning });
   },
 
   loadFromStorage: async () => {
@@ -75,16 +80,24 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
     loadPromise = (async () => {
       try {
-        const sessions = await loadSessions();
-        set({ sessions, ...getDerivedStats(sessions), loaded: true });
+        const result = await loadSessions();
+        set({
+          sessions: result.sessions,
+          ...getDerivedStats(result.sessions),
+          storageWarning: result.warning,
+          loaded: true
+        });
       } catch (error) {
         console.error('Failed to load study sessions:', error);
-        set({ loaded: true });
+        set({
+          storageWarning: '无法加载学习记录。请检查桌面数据文件后重试。',
+          loaded: true
+        });
       }
     })().finally(() => {
       loadPromise = null;
     });
 
     return loadPromise;
-  },
+  }
 }));

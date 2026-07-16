@@ -15,7 +15,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src"]
+  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts"]
 }

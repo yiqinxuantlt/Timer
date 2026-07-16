@@ -39,7 +39,7 @@ const initialState: TimerState = {
 };
 
 function createSession(state: TimerState, endedAt: number): Omit<FocusSession, 'id'> | null {
-  if (!state.startedAt) return null;
+  if (state.startedAt === null) return null;
 
   return {
     subject: state.subject.trim() || '学习',
@@ -118,7 +118,7 @@ export const useTimerStore = create<TimerStore>()(
           return;
         }
 
-        if (!isTimerActive(current.status) || !current.startedAt) return;
+        if (!isTimerActive(current.status) || current.startedAt === null) return;
 
         const endedAt = getSessionEnd(current);
         const session =
@@ -147,7 +147,7 @@ export const useTimerStore = create<TimerStore>()(
 
       complete: async () => {
         const current = get();
-        if (current.status !== 'RUNNING' || !current.startedAt) return;
+        if (current.status !== 'RUNNING' || current.startedAt === null) return;
 
         const endedAt = Date.now();
         const session = createSession(current, endedAt);

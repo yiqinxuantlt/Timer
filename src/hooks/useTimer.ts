@@ -49,7 +49,7 @@ export function useTimer() {
           startedAt,
           pausedAt,
           cumulativePausedDuration,
-          completedDuration,
+          completedDuration
         },
         now
       ),
@@ -59,6 +59,6 @@ export function useTimer() {
   return {
     elapsed,
     progress: calculateProgress(elapsed, targetDuration),
-    status,
+    status
   };
 }

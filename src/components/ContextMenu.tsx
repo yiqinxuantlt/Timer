@@ -4,6 +4,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import styles from './ContextMenu.module.css';
 
 interface ContextMenuProps {
+  inTauri: boolean;
   x: number;
   y: number;
   onClose: () => void;
@@ -11,9 +12,12 @@ interface ContextMenuProps {
   onOpenSettings: () => void;
 }
 
-function ContextMenu({ x, y, onClose, onOpenHistory, onOpenSettings }: ContextMenuProps) {
+function ContextMenu({ inTauri, x, y, onClose, onOpenHistory, onOpenSettings }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { alwaysOnTop, compactMode, toggleAlwaysOnTop, toggleCompactMode } = useSettingsStore();
+  const alwaysOnTop = useSettingsStore((state) => state.alwaysOnTop);
+  const compactMode = useSettingsStore((state) => state.compactMode);
+  const toggleAlwaysOnTop = useSettingsStore((state) => state.toggleAlwaysOnTop);
+  const toggleCompactMode = useSettingsStore((state) => state.toggleCompactMode);
 
   // 调整位置防止溢出窗口
   useEffect(() => {
@@ -91,11 +95,13 @@ function ContextMenu({ x, y, onClose, onOpenHistory, onOpenSettings }: ContextMe
           <Settings size={14} />
           <span>设置</span>
         </button>
-        <button className={styles.item} onClick={handlePin}>
-          <Pin size={14} />
-          <span>置顶窗口</span>
-          {alwaysOnTop && <span className={styles.check}>✓</span>}
-        </button>
+        {inTauri && (
+          <button className={styles.item} onClick={handlePin}>
+            <Pin size={14} />
+            <span>置顶窗口</span>
+            {alwaysOnTop && <span className={styles.check}>✓</span>}
+          </button>
+        )}
         <button className={styles.item} onClick={handleCompactMode}>
           <Minimize2 size={14} />
           <span>紧凑模式</span>

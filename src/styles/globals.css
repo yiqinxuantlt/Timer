@@ -149,6 +149,19 @@ button {
   animation: completedFlash 0.6s var(--ease-out);
 }
 
+.storage-warning {
+  flex-shrink: 0;
+  margin: var(--space-2) var(--space-4) 0;
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  color: var(--warning);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.26);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
 @keyframes completedFlash {
   0% {
     background-color: rgba(52, 211, 153, 0.12);

@@ -1,10 +1,12 @@
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import { X, Bell, Timer, Layers, Coffee, RotateCcw } from 'lucide-react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTimerStore } from '../stores/timerStore';
 import styles from './SettingsPanel.module.css';
 
 interface SettingsPanelProps {
+  inTauri: boolean;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -18,7 +20,8 @@ const DURATION_OPTIONS = [
   { label: '2 小时', value: 120 * 60 * 1000 }
 ];
 
-function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
+function SettingsPanel({ inTauri, isOpen, onClose }: SettingsPanelProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const defaultTargetDuration = useSettingsStore((state) => state.defaultTargetDuration);
   const setDefaultTargetDuration = useSettingsStore((state) => state.setDefaultTargetDuration);
   const pomodoroConfig = useSettingsStore((state) => state.pomodoroConfig);
@@ -37,13 +40,25 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const isTimerActive =
     timerStatus === 'RUNNING' || timerStatus === 'PAUSED' || pomodoroWaitingForConfirmation;
 
+  useDialogFocus(isOpen, onClose, dialogRef);
+
   if (!isOpen) return null;
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={styles.panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-panel-title"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.header}>
-          <h2 className={styles.title}>设置</h2>
+          <h2 id="settings-panel-title" className={styles.title}>
+            设置
+          </h2>
           <button className={styles.closeButton} onClick={onClose} aria-label="关闭设置">
             <X size={16} />
           </button>
@@ -165,7 +180,7 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* 窗口设置 */}
-          <div className={styles.section}>
+          <div className={styles.section} hidden={!inTauri}>
             <div className={styles.sectionHeader}>
               <Layers size={14} className={styles.sectionIcon} />
               <span className={styles.sectionTitle}>窗口</span>
@@ -189,7 +204,7 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           </div>
 
           {/* 通知与快捷键 */}
-          <div className={styles.section}>
+          <div className={styles.section} hidden={!inTauri}>
             <div className={styles.sectionHeader}>
               <Bell size={14} className={styles.sectionIcon} />
               <span className={styles.sectionTitle}>通知与快捷键</span>
@@ -227,6 +242,12 @@ function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
             </div>
           </div>
+
+          {!inTauri && (
+            <p className={styles.browserHint}>
+              浏览器预览支持计时、科目、历史和时长设置；窗口、桌面通知与全局快捷键仅在桌面应用中可用。
+            </p>
+          )}
         </div>
       </div>
     </div>

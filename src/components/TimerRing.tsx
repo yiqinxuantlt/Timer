@@ -18,15 +18,10 @@ const STATUS_LABELS: Record<TimerStatus, string> = {
   RUNNING: '专注中',
   PAUSED: '已暂停',
   COMPLETED: '已完成',
-  CANCELLED: '已停止',
+  CANCELLED: '已停止'
 };
 
-function TimerRing({
-  progress,
-  size = 'normal',
-  status = 'IDLE',
-  elapsed = 0,
-}: TimerRingProps) {
+function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed = 0 }: TimerRingProps) {
   const id = useId().replace(/:/g, '');
   const gradientId = `progressGradient${id}`;
   const activeGradientId = `progressGradientActive${id}`;
@@ -71,13 +66,14 @@ function TimerRing({
           cy="80"
           r={RADIUS}
           style={{
-            stroke: status === 'COMPLETED'
-              ? `url(#${completedGradientId})`
-              : status === 'RUNNING'
-                ? `url(#${activeGradientId})`
-                : `url(#${gradientId})`,
+            stroke:
+              status === 'COMPLETED'
+                ? `url(#${completedGradientId})`
+                : status === 'RUNNING'
+                  ? `url(#${activeGradientId})`
+                  : `url(#${gradientId})`,
             strokeDasharray: CIRCUMFERENCE,
-            strokeDashoffset: offset,
+            strokeDashoffset: offset
           }}
         />
       </svg>

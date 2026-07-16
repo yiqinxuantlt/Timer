@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTimer } from './hooks/useTimer';
 import { useWindowManagement } from './hooks/useWindowManagement';
@@ -29,6 +29,7 @@ function App() {
   const notificationEnabled = useSettingsStore((state) => state.notificationEnabled);
   const compactMode = useSettingsStore((state) => state.compactMode);
   const loaded = useStatsStore((state) => state.loaded);
+  const storageWarning = useStatsStore((state) => state.storageWarning);
   const loadFromStorage = useStatsStore((state) => state.loadFromStorage);
   const inTauri = useWindowManagement();
 
@@ -74,7 +75,11 @@ function App() {
     setContextMenu({ x: event.clientX, y: event.clientY });
   };
 
-  const closeContextMenu = () => setContextMenu(null);
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const openHistory = useCallback(() => setHistoryOpen(true), []);
+  const closeHistory = useCallback(() => setHistoryOpen(false), []);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
   const containerClass = [
     'app-container',
     status === 'RUNNING' ? 'app-running' : '',
@@ -84,14 +89,17 @@ function App() {
     .filter(Boolean)
     .join(' ');
 
-  if (compactMode) return <CompactTimer />;
+  if (compactMode) return <CompactTimer inTauri={inTauri} />;
 
   return (
     <div className={containerClass} onContextMenu={handleContextMenu}>
-      <TitleBar
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenHistory={() => setHistoryOpen(true)}
-      />
+      <TitleBar inTauri={inTauri} onOpenSettings={openSettings} onOpenHistory={openHistory} />
+
+      {storageWarning && (
+        <p className="storage-warning" role="status" aria-live="polite">
+          {storageWarning}
+        </p>
+      )}
 
       <main className="main-content">
         <div className="mode-switcher-slot">
@@ -108,16 +116,17 @@ function App() {
         <TodayStats />
       </main>
 
-      <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <HistoryModal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <SettingsPanel inTauri={inTauri} isOpen={settingsOpen} onClose={closeSettings} />
+      <HistoryModal isOpen={historyOpen} onClose={closeHistory} />
 
       {contextMenu && (
         <ContextMenu
+          inTauri={inTauri}
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={closeContextMenu}
-          onOpenHistory={() => setHistoryOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenHistory={openHistory}
+          onOpenSettings={openSettings}
         />
       )}
     </div>

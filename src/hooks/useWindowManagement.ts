@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react';
 import { isTauri } from '../lib/platform';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTimerStore } from '../stores/timerStore';
-import {
-  getAppWindow,
-  resizeWindow,
-  setWindowAlwaysOnTop,
-} from '../services/windowService';
+import { getAppWindow, resizeWindow, setWindowAlwaysOnTop } from '../services/windowService';
 
 export function useWindowManagement(): boolean {
   const [inTauri, setInTauri] = useState(false);
@@ -14,7 +10,9 @@ export function useWindowManagement(): boolean {
   const compactMode = useSettingsStore((state) => state.compactMode);
 
   useEffect(() => {
-    void isTauri().then(setInTauri).catch(() => setInTauri(false));
+    void isTauri()
+      .then(setInTauri)
+      .catch(() => setInTauri(false));
   }, []);
 
   useEffect(() => {

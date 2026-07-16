@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use tauri::Manager;
+use std::sync::Mutex;
+use tauri::{Manager, State};
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SessionRecord {
@@ -35,7 +38,12 @@ struct StudyData {
     total_seconds: u64,
 }
 
-/// Error type returned by all Tauri commands
+#[derive(Default)]
+struct StudyDataLock {
+    inner: Mutex<()>,
+}
+
+/// Error type returned by all Tauri commands.
 #[derive(Debug, Serialize)]
 struct CommandError {
     message: String,
@@ -57,38 +65,140 @@ impl From<serde_json::Error> for CommandError {
     }
 }
 
+fn command_error(message: impl Into<String>) -> CommandError {
+    CommandError {
+        message: message.into(),
+    }
+}
+
 fn get_data_path(app: &tauri::AppHandle) -> Result<PathBuf, CommandError> {
     let data_dir = app
         .path()
         .app_data_dir()
-        .map_err(|e| CommandError {
-            message: format!("failed to get app data dir: {e}"),
-        })?;
+        .map_err(|error| command_error(format!("failed to get app data dir: {error}")))?;
     fs::create_dir_all(&data_dir)?;
     Ok(data_dir.join("study_data.json"))
 }
 
-fn load_data(app: &tauri::AppHandle) -> Result<StudyData, CommandError> {
-    let path = get_data_path(app)?;
-    if path.exists() {
-        let content = fs::read_to_string(&path)?;
-        let data: StudyData = serde_json::from_str(&content)?;
-        Ok(data)
-    } else {
-        Ok(StudyData::default())
-    }
+fn get_backup_path(path: &Path) -> PathBuf {
+    path.with_file_name("study_data.backup.json")
 }
 
-/// Atomic write: write to temp file then rename, prevents data corruption on crash
+fn read_study_data(path: &Path) -> Result<StudyData, CommandError> {
+    let content = fs::read_to_string(path)
+        .map_err(|error| command_error(format!("failed to read {}: {error}", path.display())))?;
+    serde_json::from_str(&content)
+        .map_err(|error| command_error(format!("invalid JSON in {}: {error}", path.display())))
+}
+
+fn unique_temp_path(path: &Path) -> Result<PathBuf, CommandError> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| command_error("study data path has no parent directory"))?;
+    let name = path
+        .file_name()
+        .ok_or_else(|| command_error("study data path has no filename"))?
+        .to_string_lossy();
+
+    Ok(parent.join(format!(".{name}.{}.tmp", Uuid::new_v4())))
+}
+
+/// Atomically replace a file after syncing a unique temporary file on the same filesystem.
+fn write_atomic_text(path: &Path, content: &str) -> Result<(), CommandError> {
+    let temp_path = unique_temp_path(path)?;
+    let result = (|| {
+        let mut temp_file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp_path)?;
+        temp_file.write_all(content.as_bytes())?;
+        temp_file.sync_all()?;
+        drop(temp_file);
+        replace_file(&temp_path, path)
+    })();
+
+    if result.is_err() {
+        let _ = fs::remove_file(&temp_path);
+    }
+
+    result
+}
+
+/// Preserve the last known-good document without replacing a valid backup with corrupt input.
+fn backup_existing_data(path: &Path) -> Result<(), CommandError> {
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(path)?;
+    if serde_json::from_str::<StudyData>(&content).is_err() {
+        return Ok(());
+    }
+
+    write_atomic_text(&get_backup_path(path), &content)
+}
+
+fn restore_backup(backup_path: &Path, data_path: &Path) -> Result<(), CommandError> {
+    let content = fs::read_to_string(backup_path)?;
+    write_atomic_text(data_path, &content)
+}
+
+fn load_data(app: &tauri::AppHandle) -> Result<StudyData, CommandError> {
+    let data_path = get_data_path(app)?;
+    let backup_path = get_backup_path(&data_path);
+
+    if data_path.exists() {
+        match read_study_data(&data_path) {
+            Ok(data) => return Ok(data),
+            Err(primary_error) => {
+                if backup_path.exists() {
+                    match read_study_data(&backup_path) {
+                        Ok(data) => {
+                            if let Err(restore_error) = restore_backup(&backup_path, &data_path) {
+                                eprintln!(
+                                    "Recovered study data from backup but could not restore the primary file: {}",
+                                    restore_error.message
+                                );
+                            }
+                            return Ok(data);
+                        }
+                        Err(backup_error) => {
+                            return Err(command_error(format!(
+                                "study data and its backup are unreadable; primary: {}; backup: {}",
+                                primary_error.message, backup_error.message
+                            )));
+                        }
+                    }
+                }
+
+                return Err(command_error(format!(
+                    "study data is unreadable and no backup is available: {}",
+                    primary_error.message
+                )));
+            }
+        }
+    }
+
+    if backup_path.exists() {
+        let data = read_study_data(&backup_path)?;
+        if let Err(restore_error) = restore_backup(&backup_path, &data_path) {
+            eprintln!(
+                "Loaded study data from backup but could not restore the primary file: {}",
+                restore_error.message
+            );
+        }
+        return Ok(data);
+    }
+
+    Ok(StudyData::default())
+}
+
 fn save_data_atomic(app: &tauri::AppHandle, data: &StudyData) -> Result<(), CommandError> {
-    let path = get_data_path(app)?;
+    let data_path = get_data_path(app)?;
     let json = serde_json::to_string_pretty(data)?;
 
-    // Write to temp file in same directory (same filesystem → atomic rename)
-    let temp_path = path.with_extension("json.tmp");
-    fs::write(&temp_path, &json)?;
-    replace_file(&temp_path, &path)?;
-    Ok(())
+    backup_existing_data(&data_path)?;
+    write_atomic_text(&data_path, &json)
 }
 
 #[cfg(windows)]
@@ -118,9 +228,7 @@ fn replace_file(temp_path: &Path, path: &Path) -> Result<(), CommandError> {
     };
 
     if result == 0 {
-        return Err(CommandError {
-            message: std::io::Error::last_os_error().to_string(),
-        });
+        return Err(command_error(std::io::Error::last_os_error().to_string()));
     }
 
     Ok(())
@@ -133,12 +241,27 @@ fn replace_file(temp_path: &Path, path: &Path) -> Result<(), CommandError> {
 }
 
 #[tauri::command]
-fn get_study_data(app: tauri::AppHandle) -> Result<StudyData, CommandError> {
+fn get_study_data(
+    app: tauri::AppHandle,
+    state: State<'_, StudyDataLock>,
+) -> Result<StudyData, CommandError> {
+    let _guard = state
+        .inner
+        .lock()
+        .map_err(|_| command_error("study data lock is poisoned"))?;
     load_data(&app)
 }
 
 #[tauri::command]
-fn save_study_data(app: tauri::AppHandle, data: StudyData) -> Result<StudyData, CommandError> {
+fn save_study_data(
+    app: tauri::AppHandle,
+    state: State<'_, StudyDataLock>,
+    data: StudyData,
+) -> Result<StudyData, CommandError> {
+    let _guard = state
+        .inner
+        .lock()
+        .map_err(|_| command_error("study data lock is poisoned"))?;
     save_data_atomic(&app, &data)?;
     Ok(data)
 }
@@ -146,16 +269,16 @@ fn save_study_data(app: tauri::AppHandle, data: StudyData) -> Result<StudyData, 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_store::Builder::default().build())
+        .manage(StudyDataLock::default())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![
-            get_study_data,
-            save_study_data,
-        ])
-        .setup(|_app| {
-            Ok(())
-        })
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
+        .invoke_handler(tauri::generate_handler![get_study_data, save_study_data])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

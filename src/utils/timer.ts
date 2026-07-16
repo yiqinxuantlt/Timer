@@ -11,8 +11,9 @@ export interface TimerSnapshot {
 export function calculateElapsed(snapshot: TimerSnapshot, now = Date.now()): number {
   const { status, startedAt, pausedAt, cumulativePausedDuration, completedDuration } = snapshot;
 
-  if (status === 'IDLE' || !startedAt) return 0;
+  if (status === 'IDLE') return 0;
   if (status === 'COMPLETED') return Math.max(0, completedDuration ?? 0);
+  if (startedAt === null) return 0;
 
   const effectiveEnd = status === 'PAUSED' && pausedAt !== null ? pausedAt : now;
   return Math.max(0, effectiveEnd - startedAt - cumulativePausedDuration);
@@ -28,8 +29,6 @@ export function isTimerActive(status: TimerStatus): boolean {
 }
 
 export function getSessionEnd(snapshot: TimerSnapshot, now = Date.now()): number | null {
-  if (!snapshot.startedAt) return null;
-  return snapshot.status === 'PAUSED' && snapshot.pausedAt !== null
-    ? snapshot.pausedAt
-    : now;
+  if (snapshot.startedAt === null) return null;
+  return snapshot.status === 'PAUSED' && snapshot.pausedAt !== null ? snapshot.pausedAt : now;
 }

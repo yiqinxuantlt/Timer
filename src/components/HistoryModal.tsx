@@ -1,5 +1,6 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, Download, Flame, Trash2, X } from 'lucide-react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { useStatsStore } from '../stores/statsStore';
 import { formatDuration } from '../utils/format';
 import type { FocusSession } from '../types';
@@ -20,25 +21,36 @@ function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
+    day: '2-digit'
   });
 }
 
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString('zh-CN', {
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   });
 }
 
 function HistoryModal({ isOpen, onClose }: HistoryModalProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const sessions = useStatsStore((state) => state.sessions);
   const todayTotal = useStatsStore((state) => state.todayTotal);
   const totalDuration = useStatsStore((state) => state.totalDuration);
   const currentStreak = useStatsStore((state) => state.currentStreak);
   const deleteSession = useStatsStore((state) => state.deleteSession);
   const clearAllSessions = useStatsStore((state) => state.clearAllSessions);
+
+  useDialogFocus(isOpen, onClose, dialogRef);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowClearConfirm(false);
+      setIsClearing(false);
+    }
+  }, [isOpen]);
 
   const groupedSessions = useMemo(() => {
     const sorted = [...sessions].sort((a, b) => b.startedAt - a.startedAt);
@@ -54,16 +66,21 @@ function HistoryModal({ isOpen, onClose }: HistoryModalProps) {
     return Array.from(groups, ([date, group]): GroupedSessions => ({
       date,
       sessions: group,
-      totalMs: group.reduce((total, session) => total + session.duration, 0),
+      totalMs: group.reduce((total, session) => total + session.duration, 0)
     }));
   }, [sessions]);
 
   if (!isOpen) return null;
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (showClearConfirm) {
-      void clearAllSessions();
-      setShowClearConfirm(false);
+      setIsClearing(true);
+      try {
+        await clearAllSessions();
+      } finally {
+        setIsClearing(false);
+        setShowClearConfirm(false);
+      }
       return;
     }
     setShowClearConfirm(true);
@@ -78,24 +95,36 @@ function HistoryModal({ isOpen, onClose }: HistoryModalProps) {
       endedAt: new Date(session.endedAt).toISOString(),
       durationSeconds: Math.floor(session.duration / 1000),
       durationFormatted: formatDuration(session.duration),
-      targetDurationSeconds: Math.floor(session.targetDuration / 1000),
+      targetDurationSeconds: Math.floor(session.targetDuration / 1000)
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `study-timer-records-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.append(anchor);
     anchor.click();
+    anchor.remove();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-modal-title"
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={styles.header}>
           <div>
             <span className={styles.eyebrow}>FOCUS LOG</span>
-            <h2 className={styles.title}>历史记录</h2>
+            <h2 id="history-modal-title" className={styles.title}>
+              历史记录
+            </h2>
           </div>
           <button className={styles.closeButton} onClick={onClose} aria-label="关闭">
             <X size={16} />
@@ -118,7 +147,9 @@ function HistoryModal({ isOpen, onClose }: HistoryModalProps) {
           <div className={styles.statItem}>
             <Flame size={14} className={styles.statIcon} />
             <span className={styles.statLabel}>连续</span>
-            <span className={styles.statValue}>{currentStreak > 0 ? `${currentStreak} 天` : '-'}</span>
+            <span className={styles.statValue}>
+              {currentStreak > 0 ? `${currentStreak} 天` : '-'}
+            </span>
           </div>
         </div>
 
@@ -149,7 +180,9 @@ function HistoryModal({ isOpen, onClose }: HistoryModalProps) {
                           <span className={styles.subject}>{session.subject || '未命名'}</span>
                         </div>
                         <div className={styles.itemRight}>
-                          <span className={styles.duration}>{formatDuration(session.duration)}</span>
+                          <span className={styles.duration}>
+                            {formatDuration(session.duration)}
+                          </span>
                           <button
                             className={styles.deleteBtn}
                             onClick={() => void deleteSession(session.id)}
@@ -172,7 +205,10 @@ function HistoryModal({ isOpen, onClose }: HistoryModalProps) {
                 </button>
                 <button
                   className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                  onClick={handleClearAll}
+                  data-testid="clear-history"
+                  onClick={() => void handleClearAll()}
+                  disabled={isClearing}
+                  aria-busy={isClearing}
                 >
                   {showClearConfirm ? '确认清空？' : '清空所有'}
                 </button>

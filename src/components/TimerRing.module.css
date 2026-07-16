@@ -64,18 +64,35 @@
   letter-spacing: 0.12em;
 }
 
-.innerLabelRunning { color: var(--accent-tertiary); }
-.innerLabelPaused { color: var(--warning); }
-.innerLabelCompleted { color: var(--success); }
+.innerLabelRunning {
+  color: var(--accent-tertiary);
+}
+.innerLabelPaused {
+  color: var(--warning);
+}
+.innerLabelCompleted {
+  color: var(--success);
+}
 
 @keyframes pulseGlow {
-  0%, 100% { opacity: 0.82; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes completePop {
-  0% { transform: scale(0.97); opacity: 0.72; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.97);
+    opacity: 0.72;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .containerCompact {

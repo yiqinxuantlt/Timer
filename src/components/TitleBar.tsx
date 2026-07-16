@@ -1,30 +1,30 @@
-import { memo, useEffect, useState, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Minus, X, Pin, Settings, History, ChevronDown } from 'lucide-react';
-import { isTauri } from '../lib/platform';
 import { closeWindow, minimizeWindow } from '../services/windowService';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTimerStore } from '../stores/timerStore';
 import styles from './TitleBar.module.css';
 
 interface TitleBarProps {
+  inTauri: boolean;
   onOpenSettings?: () => void;
   onOpenHistory?: () => void;
 }
 
-function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
-  const [inTauri, setInTauri] = useState(false);
-  const { alwaysOnTop, toggleAlwaysOnTop, recentSubjects, addRecentSubject } = useSettingsStore();
-  const { subject, setSubject, status } = useTimerStore();
+function TitleBar({ inTauri, onOpenSettings, onOpenHistory }: TitleBarProps) {
+  const alwaysOnTop = useSettingsStore((state) => state.alwaysOnTop);
+  const toggleAlwaysOnTop = useSettingsStore((state) => state.toggleAlwaysOnTop);
+  const recentSubjects = useSettingsStore((state) => state.recentSubjects);
+  const addRecentSubject = useSettingsStore((state) => state.addRecentSubject);
+  const subject = useTimerStore((state) => state.subject);
+  const setSubject = useTimerStore((state) => state.setSubject);
+  const status = useTimerStore((state) => state.status);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(subject);
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    isTauri().then(setInTauri).catch(() => setInTauri(false));
-  }, []);
 
   // 同步 subject 到编辑框
   useEffect(() => {
@@ -101,8 +101,6 @@ function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
     setIsEditing(true);
   };
 
-  if (!inTauri) return null;
-
   return (
     <div className={styles.container} data-tauri-drag-region>
       <div className={styles.left} data-tauri-drag-region>
@@ -126,14 +124,12 @@ function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
               aria-label="编辑科目"
             >
               <span className={styles.subjectText}>{subject}</span>
-              {!isRunning && (
-                <ChevronDown size={10} className={styles.dropdownArrow} />
-              )}
+              {!isRunning && <ChevronDown size={10} className={styles.dropdownArrow} />}
             </button>
           )}
 
           {/* 最近科目下拉 */}
-          {showDropdown && recentSubjects.length > 0 && !isEditing && (
+          {showDropdown && !isEditing && (
             <div className={styles.dropdown}>
               {recentSubjects.map((s) => (
                 <button
@@ -144,10 +140,7 @@ function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
                   {s}
                 </button>
               ))}
-              <button
-                className={styles.dropdownItem}
-                onClick={handleStartEdit}
-              >
+              <button className={styles.dropdownItem} onClick={handleStartEdit}>
                 编辑科目...
               </button>
             </div>
@@ -156,21 +149,18 @@ function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
       </div>
 
       <div className={styles.controls}>
-        <button
-          className={`${styles.button} ${alwaysOnTop ? styles.buttonActive : ''}`}
-          onClick={toggleAlwaysOnTop}
-          aria-label={alwaysOnTop ? '取消置顶' : '置顶'}
-          title={alwaysOnTop ? '取消置顶' : '置顶'}
-        >
-          <Pin size={12} />
-        </button>
-        {onOpenSettings && (
+        {inTauri && (
           <button
-            className={styles.button}
-            onClick={onOpenSettings}
-            aria-label="设置"
-            title="设置"
+            className={`${styles.button} ${alwaysOnTop ? styles.buttonActive : ''}`}
+            onClick={toggleAlwaysOnTop}
+            aria-label={alwaysOnTop ? '取消置顶' : '置顶'}
+            title={alwaysOnTop ? '取消置顶' : '置顶'}
           >
+            <Pin size={12} />
+          </button>
+        )}
+        {onOpenSettings && (
+          <button className={styles.button} onClick={onOpenSettings} aria-label="设置" title="设置">
             <Settings size={12} />
           </button>
         )}
@@ -184,20 +174,20 @@ function TitleBar({ onOpenSettings, onOpenHistory }: TitleBarProps) {
             <History size={12} />
           </button>
         )}
-        <button
-          className={styles.button}
-          onClick={handleMinimize}
-          aria-label="最小化"
-        >
-          <Minus size={12} />
-        </button>
-        <button
-          className={`${styles.button} ${styles.closeButton}`}
-          onClick={handleClose}
-          aria-label="关闭"
-        >
-          <X size={12} />
-        </button>
+        {inTauri && (
+          <>
+            <button className={styles.button} onClick={handleMinimize} aria-label="最小化">
+              <Minus size={12} />
+            </button>
+            <button
+              className={`${styles.button} ${styles.closeButton}`}
+              onClick={handleClose}
+              aria-label="关闭"
+            >
+              <X size={12} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

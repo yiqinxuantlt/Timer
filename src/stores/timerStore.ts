@@ -1,14 +1,15 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { FocusSession, TimerMode, TimerState } from '../types';
+import type { FocusSession, StudyProject, TimerMode, TimerState } from '../types';
 import { getNextPomodoroPhase, getPomodoroPhaseDuration } from '../utils/pomodoro';
 import { MIN_VALID_DURATION_MS } from '../utils/stats';
 import { calculateElapsed, getSessionEnd, isTimerActive } from '../utils/timer';
+import { DEFAULT_PROJECT } from '../utils/projects';
 import { useSettingsStore } from './settingsStore';
 import { useStatsStore } from './statsStore';
 
 interface TimerActions {
-  start: (subject?: string) => void;
+  start: () => void;
   pause: () => void;
   resume: () => void;
   stop: (save?: boolean) => Promise<void>;
@@ -17,6 +18,7 @@ interface TimerActions {
   setMode: (mode: TimerMode) => void;
   confirmPomodoroPhase: () => void;
   setTargetDuration: (ms: number) => void;
+  setProject: (project: StudyProject) => void;
   setSubject: (subject: string) => void;
   restoreFromPersisted: () => void;
 }
@@ -30,7 +32,8 @@ const initialState: TimerState = {
   targetDuration: 3_600_000,
   pausedAt: null,
   cumulativePausedDuration: 0,
-  subject: '学习',
+  subject: DEFAULT_PROJECT.name,
+  projectId: DEFAULT_PROJECT.id,
   completedDuration: null,
   pomodoroPhase: null,
   pomodoroRound: 1,
@@ -42,7 +45,8 @@ function createSession(state: TimerState, endedAt: number): Omit<FocusSession, '
   if (state.startedAt === null) return null;
 
   return {
-    subject: state.subject.trim() || '学习',
+    subject: state.subject.trim() || DEFAULT_PROJECT.name,
+    projectId: state.projectId || DEFAULT_PROJECT.id,
     startedAt: state.startedAt,
     endedAt,
     duration: calculateElapsed(state, endedAt),
@@ -57,7 +61,7 @@ export const useTimerStore = create<TimerStore>()(
     (set, get) => ({
       ...initialState,
 
-      start: (subject) => {
+      start: () => {
         const current = get();
         if (current.status !== 'IDLE' && current.status !== 'COMPLETED') return;
         if (current.mode === 'pomodoro' && current.pomodoroWaitingForConfirmation) return;
@@ -74,7 +78,7 @@ export const useTimerStore = create<TimerStore>()(
           startedAt: Date.now(),
           pausedAt: null,
           cumulativePausedDuration: 0,
-          subject: subject?.trim() || current.subject || '学习',
+          subject: current.subject.trim() || DEFAULT_PROJECT.name,
           completedDuration: null,
           pomodoroPhase,
           pomodoroRound: current.mode === 'pomodoro' ? 1 : current.pomodoroRound,
@@ -241,7 +245,16 @@ export const useTimerStore = create<TimerStore>()(
       setTargetDuration: (ms) => {
         if (ms > 0 && !isTimerActive(get().status)) set({ targetDuration: ms });
       },
-      setSubject: (subject) => set({ subject }),
+      setProject: (project) => {
+        const current = get();
+        if (isTimerActive(current.status) || current.pomodoroWaitingForConfirmation) return;
+        set({ projectId: project.id, subject: project.name });
+      },
+      setSubject: (subject) => {
+        const current = get();
+        if (isTimerActive(current.status) || current.pomodoroWaitingForConfirmation) return;
+        set({ subject: subject.trim() || DEFAULT_PROJECT.name });
+      },
 
       restoreFromPersisted: () => {
         const current = get();
@@ -258,7 +271,8 @@ export const useTimerStore = create<TimerStore>()(
             ...initialState,
             mode: current.mode,
             targetDuration: current.targetDuration,
-            subject: current.subject
+            subject: current.subject,
+            projectId: current.projectId || DEFAULT_PROJECT.id
           });
         }
       }
@@ -273,6 +287,7 @@ export const useTimerStore = create<TimerStore>()(
         pausedAt: state.pausedAt,
         cumulativePausedDuration: state.cumulativePausedDuration,
         subject: state.subject,
+        projectId: state.projectId,
         mode: state.mode,
         pomodoroPhase: state.pomodoroPhase,
         pomodoroRound: state.pomodoroRound,

@@ -20,6 +20,7 @@ export interface TimerState {
   pausedAt: number | null;
   cumulativePausedDuration: number;
   subject: string;
+  projectId: string;
   completedDuration: number | null; // 完成时保留最终时长，用于显示
   pomodoroPhase: PomodoroPhase | null;
   pomodoroRound: number;

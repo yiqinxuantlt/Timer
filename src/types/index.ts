@@ -3,6 +3,7 @@ export type SessionStatus = 'completed' | 'cancelled';
 export type TimerMode = 'focus' | 'pomodoro';
 export type PomodoroPhase = 'focus' | 'shortBreak' | 'longBreak';
 export type SessionMode = 'focus' | 'pomodoro';
+export type ProjectColor = 'indigo' | 'violet' | 'cyan' | 'emerald' | 'amber' | 'rose';
 
 export interface PomodoroConfig {
   focusDuration: number;
@@ -29,6 +30,7 @@ export interface TimerState {
 export interface FocusSession {
   id: string;
   subject: string;
+  projectId?: string | null;
   startedAt: number;
   endedAt: number;
   duration: number;
@@ -40,6 +42,7 @@ export interface FocusSession {
 export interface StudyRecord {
   id: string;
   subject: string;
+  projectId?: string | null;
   startedAt: number;
   endedAt: number;
   duration_seconds: number;
@@ -50,7 +53,33 @@ export interface StudyRecord {
 
 export interface StudyData {
   records: StudyRecord[];
+  projects: StudyProject[];
   total_seconds: number;
+}
+
+export interface StudyProject {
+  id: string;
+  name: string;
+  color: ProjectColor;
+  createdAt: number;
+  archivedAt: number | null;
+}
+
+export interface ProjectSummary {
+  key: string;
+  projectId: string | null;
+  name: string;
+  color: ProjectColor;
+  isLegacy: boolean;
+  todayDuration: number;
+  totalDuration: number;
+  sessionCount: number;
+  share: number;
+}
+
+export interface DailyFocusTotal {
+  date: string;
+  duration: number;
 }
 
 export interface AppSettings {

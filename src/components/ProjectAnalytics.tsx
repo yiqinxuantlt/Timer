@@ -100,4 +100,3 @@ function ProjectAnalytics({ dailyTotals, summaries }: ProjectAnalyticsProps) {
 }
 
 export default memo(ProjectAnalytics);
-

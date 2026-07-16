@@ -1,14 +1,67 @@
-.container {
+.container,
+.containerCompact,
+.containerMini {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  isolation: isolate;
+}
+
+.container {
   width: 160px;
   height: 160px;
 }
 
+.containerCompact {
+  width: 80px;
+  height: 80px;
+}
+
+.containerMini {
+  width: 64px;
+  height: 64px;
+}
+
+.container::before,
+.containerCompact::before,
+.containerMini::before {
+  position: absolute;
+  z-index: 0;
+  width: calc(100% + 22px);
+  height: calc(100% + 22px);
+  border-radius: 50%;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
+}
+
+.container[data-status='RUNNING']::before,
+.containerCompact[data-status='RUNNING']::before,
+.containerMini[data-status='RUNNING']::before {
+  background: radial-gradient(circle, var(--timer-glow-running) 0%, transparent 68%);
+  animation: timerBreathe var(--timer-breathe-duration) var(--ease-out) infinite;
+}
+
+.container[data-status='PAUSED']::before,
+.containerCompact[data-status='PAUSED']::before,
+.containerMini[data-status='PAUSED']::before {
+  background: radial-gradient(circle, var(--timer-glow-paused) 0%, transparent 68%);
+  opacity: 0.34;
+  transform: scale(0.97);
+}
+
+.container[data-status='COMPLETED']::before,
+.containerCompact[data-status='COMPLETED']::before,
+.containerMini[data-status='COMPLETED']::before {
+  background: radial-gradient(circle, var(--timer-glow-completed) 0%, transparent 68%);
+  animation: completionBloom 520ms var(--ease-out) both;
+}
+
 .svg {
   position: absolute;
+  z-index: 1;
   inset: 0;
   transform: rotate(-90deg);
 }
@@ -29,17 +82,19 @@
 
 .progressCircleRunning {
   filter: drop-shadow(0 0 10px rgba(129, 140, 248, 0.52));
-  animation: pulseGlow 2.4s ease-in-out infinite;
+  animation: ringGlowBreathe var(--timer-breathe-duration) ease-in-out infinite;
 }
 
 .progressCircleCompleted {
   filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.58));
-  animation: completePop 450ms var(--ease-out);
+  animation: completePop 520ms var(--ease-out);
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .innerContent {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -50,11 +105,13 @@
 
 .innerTime {
   color: var(--text-primary);
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
   font-size: 30px;
-  font-weight: var(--weight-normal);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.045em;
   line-height: 1;
+  text-shadow: 0 1px 14px rgba(99, 102, 241, 0.14);
 }
 
 .innerLabel {
@@ -67,52 +124,71 @@
 .innerLabelRunning {
   color: var(--accent-tertiary);
 }
+
 .innerLabelPaused {
   color: var(--warning);
 }
+
 .innerLabelCompleted {
   color: var(--success);
 }
 
-@keyframes pulseGlow {
+@keyframes timerBreathe {
+  0%,
+  100% {
+    opacity: 0.24;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 0.72;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes ringGlowBreathe {
   0%,
   100% {
     opacity: 0.82;
   }
+
   50% {
     opacity: 1;
   }
 }
 
+@keyframes completionBloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.78);
+  }
+
+  55% {
+    opacity: 0.72;
+    transform: scale(1.06);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
 @keyframes completePop {
   0% {
+    opacity: 0.76;
     transform: scale(0.97);
-    opacity: 0.72;
   }
+
   100% {
-    transform: scale(1);
     opacity: 1;
+    transform: scale(1);
   }
 }
 
-.containerCompact {
-  width: 80px;
-  height: 80px;
-}
-
-.containerCompact svg {
-  width: 80px;
-  height: 80px;
-}
-
-.containerMini {
-  width: 64px;
-  height: 64px;
-}
-
-.containerMini svg {
-  width: 64px;
-  height: 64px;
+.containerMini::before {
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
 }
 
 .containerMini .bgCircle,
@@ -120,4 +196,32 @@
 .containerMini .progressCircleRunning,
 .containerMini .progressCircleCompleted {
   stroke-width: 3;
+}
+
+.containerMini .progressCircleRunning {
+  filter: drop-shadow(0 0 6px rgba(129, 140, 248, 0.46));
+}
+
+.containerMini .progressCircleCompleted {
+  filter: drop-shadow(0 0 7px rgba(52, 211, 153, 0.5));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container[data-status='RUNNING']::before,
+  .containerCompact[data-status='RUNNING']::before,
+  .containerMini[data-status='RUNNING']::before,
+  .container[data-status='COMPLETED']::before,
+  .containerCompact[data-status='COMPLETED']::before,
+  .containerMini[data-status='COMPLETED']::before,
+  .progressCircleRunning,
+  .progressCircleCompleted {
+    animation: none;
+  }
+
+  .container[data-status='RUNNING']::before,
+  .containerCompact[data-status='RUNNING']::before,
+  .containerMini[data-status='RUNNING']::before {
+    opacity: 0.3;
+    transform: scale(0.97);
+  }
 }

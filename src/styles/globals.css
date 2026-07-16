@@ -62,6 +62,11 @@
   --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.34);
   --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.32);
 
+  --timer-breathe-duration: 4.8s;
+  --timer-glow-running: rgba(129, 140, 248, 0.4);
+  --timer-glow-paused: rgba(251, 191, 36, 0.32);
+  --timer-glow-completed: rgba(52, 211, 153, 0.42);
+
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-fast: 140ms;

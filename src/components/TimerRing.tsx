@@ -25,6 +25,7 @@ function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed = 0 }: 
   const id = useId().replace(/:/g, '');
   const gradientId = `progressGradient${id}`;
   const activeGradientId = `progressGradientActive${id}`;
+  const pausedGradientId = `progressGradientPaused${id}`;
   const completedGradientId = `progressGradientCompleted${id}`;
   const offset = CIRCUMFERENCE * (1 - Math.min(Math.max(progress, 0), 1));
   const containerClass =
@@ -41,9 +42,22 @@ function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed = 0 }: 
         : ''
   }`;
   const svgSize = size === 'mini' ? 64 : size === 'compact' ? 80 : 160;
+  const progressStroke =
+    status === 'COMPLETED'
+      ? `url(#${completedGradientId})`
+      : status === 'PAUSED'
+        ? `url(#${pausedGradientId})`
+        : status === 'RUNNING'
+          ? `url(#${activeGradientId})`
+          : `url(#${gradientId})`;
 
   return (
-    <div className={containerClass}>
+    <div
+      className={containerClass}
+      data-size={size}
+      data-status={status}
+      data-testid="timer-ring"
+    >
       <svg className={styles.svg} width={svgSize} height={svgSize} viewBox="0 0 160 160">
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -53,6 +67,10 @@ function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed = 0 }: 
           <linearGradient id={activeGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#6366f1" />
             <stop offset="100%" stopColor="#a78bfa" />
+          </linearGradient>
+          <linearGradient id={pausedGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#fbbf24" />
           </linearGradient>
           <linearGradient id={completedGradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#10b981" />
@@ -64,14 +82,10 @@ function TimerRing({ progress, size = 'normal', status = 'IDLE', elapsed = 0 }: 
           className={progressClass}
           cx="80"
           cy="80"
+          data-testid="timer-progress"
           r={RADIUS}
           style={{
-            stroke:
-              status === 'COMPLETED'
-                ? `url(#${completedGradientId})`
-                : status === 'RUNNING'
-                  ? `url(#${activeGradientId})`
-                  : `url(#${gradientId})`,
+            stroke: progressStroke,
             strokeDasharray: CIRCUMFERENCE,
             strokeDashoffset: offset
           }}

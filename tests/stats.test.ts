@@ -29,6 +29,7 @@ function createSession(overrides: Partial<FocusSession> = {}): FocusSession {
   return {
     id: `session-${startedAt}-${duration}`,
     subject: '数学',
+    projectId: null,
     startedAt,
     endedAt: overrides.endedAt ?? startedAt + duration,
     duration,

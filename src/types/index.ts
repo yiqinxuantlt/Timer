@@ -31,7 +31,7 @@ export interface TimerState {
 export interface FocusSession {
   id: string;
   subject: string;
-  projectId?: string | null;
+  projectId: string | null;
   startedAt: number;
   endedAt: number;
   duration: number;
@@ -43,7 +43,7 @@ export interface FocusSession {
 export interface StudyRecord {
   id: string;
   subject: string;
-  projectId?: string | null;
+  projectId: string | null;
   startedAt: number;
   endedAt: number;
   duration_seconds: number;

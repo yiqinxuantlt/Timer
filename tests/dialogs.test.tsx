@@ -5,14 +5,25 @@ import ContextMenu from '../src/components/ContextMenu';
 import HistoryModal from '../src/components/HistoryModal';
 import SettingsPanel from '../src/components/SettingsPanel';
 import TitleBar from '../src/components/TitleBar';
+import TodayStats from '../src/components/TodayStats';
 import { useSettingsStore } from '../src/stores/settingsStore';
 import { useStatsStore } from '../src/stores/statsStore';
 import { useTimerStore } from '../src/stores/timerStore';
-import type { FocusSession } from '../src/types';
+import type { FocusSession, StudyProject } from '../src/types';
+import { DEFAULT_PROJECT } from '../src/utils/projects';
+
+const mathProject: StudyProject = {
+  id: 'project-math',
+  name: '数学复习',
+  color: 'cyan',
+  createdAt: 0,
+  archivedAt: null
+};
 
 const session: FocusSession = {
   id: 'dialog-session',
   subject: '数学',
+  projectId: mathProject.id,
   startedAt: new Date(2026, 0, 5, 9).getTime(),
   endedAt: new Date(2026, 0, 5, 10).getTime(),
   duration: 3_600_000,
@@ -49,6 +60,7 @@ beforeEach(() => {
   clearAllSessions = vi.fn().mockResolvedValue(undefined);
   useStatsStore.setState({
     sessions: [session],
+    projects: [DEFAULT_PROJECT, mathProject],
     todayTotal: session.duration,
     totalDuration: session.duration,
     currentStreak: 1,
@@ -57,7 +69,12 @@ beforeEach(() => {
     clearAllSessions
   });
   useSettingsStore.setState({ compactMode: false, recentSubjects: [] });
-  useTimerStore.setState({ status: 'IDLE', subject: '学习' });
+  useTimerStore.setState({
+    status: 'IDLE',
+    subject: mathProject.name,
+    projectId: mathProject.id,
+    pomodoroWaitingForConfirmation: false
+  });
 });
 
 describe('dialog accessibility and browser fallback', () => {
@@ -68,11 +85,11 @@ describe('dialog accessibility and browser fallback', () => {
 
     fireEvent.click(trigger);
 
-    expect(screen.getByRole('dialog', { name: '历史记录' })).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('dialog', { name: '统计与记录' })).toHaveAttribute('aria-modal', 'true');
     expect(screen.getByRole('button', { name: '关闭' })).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
-    expect(screen.getByTestId('clear-history')).toHaveFocus();
+    expect(screen.getByRole('tab', { name: '记录' })).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -84,11 +101,13 @@ describe('dialog accessibility and browser fallback', () => {
     const trigger = screen.getByRole('button', { name: '打开历史' });
 
     fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('tab', { name: '记录' }));
     fireEvent.click(screen.getByTestId('clear-history'));
     expect(clearAllSessions).not.toHaveBeenCalled();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('tab', { name: '记录' }));
     fireEvent.click(screen.getByTestId('clear-history'));
     expect(clearAllSessions).not.toHaveBeenCalled();
 
@@ -126,6 +145,25 @@ describe('dialog accessibility and browser fallback', () => {
     expect(screen.getByRole('menu', { name: '项目列表' })).toBeVisible();
     expect(screen.queryByRole('button', { name: '最小化' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '关闭' })).not.toBeInTheDocument();
+  });
+
+  it('shows project analytics before switching to project-aware records', () => {
+    render(<HistoryHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: '打开历史' }));
+
+    expect(screen.getByRole('heading', { name: '最近 7 天' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '项目投入' })).toBeVisible();
+    expect(screen.getByText(mathProject.name)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('tab', { name: '记录' }));
+    expect(screen.getByText(session.subject)).toBeVisible();
+  });
+
+  it('shows the selected project in the compact today summary card', () => {
+    render(<TodayStats />);
+
+    expect(screen.getByText(mathProject.name)).toBeVisible();
   });
 
   it('hides the always-on-top action from the browser context menu', () => {

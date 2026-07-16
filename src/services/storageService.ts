@@ -1,8 +1,9 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { isTauri } from '../lib/platform';
-import type { FocusSession, SessionStatus, StudyRecord } from '../types';
+import type { FocusSession, SessionStatus, StudyProject, StudyRecord } from '../types';
+import { DEFAULT_PROJECT, isStudyProject, normalizeProjects } from '../utils/projects';
 
-const LOCAL_SESSIONS_KEY = 'study-timer-sessions';
+const LOCAL_STUDY_DATA_KEY = 'study-timer-sessions';
 
 interface Invoke {
   <T>(command: string, args?: Record<string, unknown>): Promise<T>;
@@ -11,6 +12,7 @@ interface Invoke {
 export interface RawStudyRecord {
   id?: unknown;
   subject?: unknown;
+  projectId?: unknown;
   startedAt?: unknown;
   endedAt?: unknown;
   duration?: unknown;
@@ -22,12 +24,20 @@ export interface RawStudyRecord {
 
 interface RawStudyData {
   records?: unknown;
+  projects?: unknown;
   total_seconds?: unknown;
 }
 
 export interface StorageResult {
   warning: string | null;
 }
+
+export interface StudyDataSnapshot {
+  sessions: FocusSession[];
+  projects: StudyProject[];
+}
+
+export interface LoadStudyDataResult extends StorageResult, StudyDataSnapshot {}
 
 export interface LoadSessionsResult extends StorageResult {
   sessions: FocusSession[];
@@ -61,6 +71,12 @@ function toStatus(value: unknown): SessionStatus {
   return value === 'cancelled' ? 'cancelled' : 'completed';
 }
 
+function normalizeProjectId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const projectId = value.trim();
+  return projectId || null;
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -70,12 +86,17 @@ function getErrorMessage(error: unknown): string {
 
 function createDesktopWarning(action: string, error: unknown): string {
   const detail = getErrorMessage(error).slice(0, 180);
-  return `无法${action}桌面学习记录。已保留浏览器本地副本，应用不会自动覆盖桌面数据文件。原因：${detail}`;
+  return (
+    '无法' +
+    action +
+    '桌面学习记录。已保留浏览器本地副本，应用不会自动覆盖桌面数据文件。原因：' +
+    detail
+  );
 }
 
 export function normalizeRecord(record: RawStudyRecord): FocusSession | null {
   const id = typeof record.id === 'string' ? record.id : null;
-  const subject = typeof record.subject === 'string' ? record.subject : '学习';
+  const subject = typeof record.subject === 'string' ? record.subject : DEFAULT_PROJECT.name;
   const startedAt = toNumber(record.startedAt, Number.NaN);
   const endedAt = toNumber(record.endedAt, Number.NaN);
   const targetDuration = toNumber(record.targetDuration, 3_600_000);
@@ -95,6 +116,7 @@ export function normalizeRecord(record: RawStudyRecord): FocusSession | null {
   return {
     id,
     subject,
+    projectId: normalizeProjectId(record.projectId),
     startedAt,
     endedAt,
     duration,
@@ -104,24 +126,48 @@ export function normalizeRecord(record: RawStudyRecord): FocusSession | null {
   };
 }
 
-function readLocalSessions(): FocusSession[] {
+function normalizeSessions(value: unknown): FocusSession[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const session = normalizeRecord(item);
+    return session ? [session] : [];
+  });
+}
+
+function normalizeStudyData(value: unknown): StudyDataSnapshot {
+  if (Array.isArray(value)) {
+    return {
+      sessions: normalizeSessions(value),
+      projects: [DEFAULT_PROJECT]
+    };
+  }
+
+  if (!isRecord(value)) {
+    return {
+      sessions: [],
+      projects: [DEFAULT_PROJECT]
+    };
+  }
+
+  return {
+    sessions: normalizeSessions(value.records),
+    projects: normalizeProjects(value.projects)
+  };
+}
+
+function readLocalStudyData(): StudyDataSnapshot {
   try {
     const storage = getBrowserStorage();
-    if (!storage) return [];
+    if (!storage) return { sessions: [], projects: [DEFAULT_PROJECT] };
 
-    const raw = storage.getItem(LOCAL_SESSIONS_KEY);
-    if (!raw) return [];
+    const raw = storage.getItem(LOCAL_STUDY_DATA_KEY);
+    if (!raw) return { sessions: [], projects: [DEFAULT_PROJECT] };
 
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.flatMap((value) => {
-      if (!isRecord(value)) return [];
-      const session = normalizeRecord(value);
-      return session ? [session] : [];
-    });
+    return normalizeStudyData(JSON.parse(raw));
   } catch {
-    return [];
+    return { sessions: [], projects: [DEFAULT_PROJECT] };
   }
 }
 
@@ -129,6 +175,7 @@ function toStudyRecord(session: FocusSession): StudyRecord {
   return {
     id: session.id,
     subject: session.subject,
+    projectId: session.projectId ?? null,
     startedAt: session.startedAt,
     endedAt: session.endedAt,
     duration_seconds: Math.floor(session.duration / 1000),
@@ -138,22 +185,47 @@ function toStudyRecord(session: FocusSession): StudyRecord {
   };
 }
 
-function writeLocalSessions(sessions: FocusSession[]): boolean {
+function createDataPayload(snapshot: StudyDataSnapshot): {
+  records: StudyRecord[];
+  projects: StudyProject[];
+  total_seconds: number;
+} {
+  const projects = normalizeProjects(snapshot.projects);
+  const records = snapshot.sessions.map(toStudyRecord);
+
+  return {
+    records,
+    projects,
+    total_seconds: records.reduce((total, record) => total + record.duration_seconds, 0)
+  };
+}
+
+function normalizeSnapshot(snapshot: StudyDataSnapshot): StudyDataSnapshot {
+  return {
+    sessions: snapshot.sessions.map((session) => ({
+      ...session,
+      projectId: session.projectId ?? null
+    })),
+    projects: normalizeProjects(snapshot.projects)
+  };
+}
+
+function writeLocalStudyData(snapshot: StudyDataSnapshot): boolean {
   try {
     const storage = getBrowserStorage();
     if (!storage) return false;
-    storage.setItem(LOCAL_SESSIONS_KEY, JSON.stringify(sessions));
+    storage.setItem(LOCAL_STUDY_DATA_KEY, JSON.stringify(createDataPayload(snapshot)));
     return true;
   } catch {
     return false;
   }
 }
 
-function clearLocalSessions(): boolean {
+function clearLocalStudyData(): boolean {
   try {
     const storage = getBrowserStorage();
     if (!storage) return false;
-    storage.removeItem(LOCAL_SESSIONS_KEY);
+    storage.removeItem(LOCAL_STUDY_DATA_KEY);
     return true;
   } catch {
     return false;
@@ -168,31 +240,57 @@ function mergeSessions(primary: FocusSession[], fallback: FocusSession[]): Focus
   return Array.from(byId.values());
 }
 
-function saveFallback(sessions: FocusSession[], warning: string): StorageResult {
-  if (writeLocalSessions(sessions)) return { warning };
-  return { warning: `${warning} 浏览器本地副本也无法写入。` };
+function mergeProjects(primary: StudyProject[], fallback: StudyProject[]): StudyProject[] {
+  const byId = new Map(primary.map((project) => [project.id, project]));
+  fallback.forEach((project) => {
+    if (!byId.has(project.id)) byId.set(project.id, project);
+  });
+  return normalizeProjects(Array.from(byId.values()));
 }
 
-export async function loadSessions(): Promise<LoadSessionsResult> {
-  const localSessions = readLocalSessions();
+function hasSnapshotData(snapshot: StudyDataSnapshot): boolean {
+  return (
+    snapshot.sessions.length > 0 ||
+    snapshot.projects.some((project) => project.id !== DEFAULT_PROJECT.id)
+  );
+}
+
+function saveFallback(snapshot: StudyDataSnapshot, warning: string): StorageResult {
+  if (writeLocalStudyData(snapshot)) return { warning };
+  return { warning: warning + ' 浏览器本地副本也无法写入。' };
+}
+
+function getMalformedDataState(data: RawStudyData, sessions: FocusSession[]): boolean {
+  const rawRecords = data.records;
+  const rawProjects = data.projects;
+
+  const hasMalformedRecords =
+    (rawRecords !== undefined && !Array.isArray(rawRecords)) ||
+    (Array.isArray(rawRecords) && sessions.length !== rawRecords.length);
+  const hasMalformedProjects =
+    rawProjects !== undefined &&
+    (!Array.isArray(rawProjects) || !rawProjects.every((project) => isStudyProject(project)));
+
+  return hasMalformedRecords || hasMalformedProjects;
+}
+
+export async function loadStudyData(): Promise<LoadStudyDataResult> {
+  const localSnapshot = readLocalStudyData();
   const invoke = await getInvoke();
-  if (!invoke) return { sessions: localSessions, warning: null };
+  if (!invoke) return { ...localSnapshot, warning: null };
 
   try {
     const data = await invoke<RawStudyData>('get_study_data');
-    const rawRecords = Array.isArray(data.records) ? data.records : [];
-    const records = rawRecords
-      .filter(isRecord)
-      .map((record) => normalizeRecord(record))
-      .filter(isFocusSession);
-    const hasMalformedRecords =
-      (data.records !== undefined && !Array.isArray(data.records)) ||
-      records.length !== rawRecords.length;
+    const snapshot: StudyDataSnapshot = {
+      sessions: normalizeSessions(data.records),
+      projects: normalizeProjects(data.projects)
+    };
 
-    if (hasMalformedRecords) {
+    if (getMalformedDataState(data, snapshot.sessions)) {
       desktopPersistenceBlocked = true;
       return {
-        sessions: mergeSessions(records, localSessions),
+        sessions: mergeSessions(snapshot.sessions, localSnapshot.sessions),
+        projects: mergeProjects(snapshot.projects, localSnapshot.projects),
         warning:
           '桌面学习记录包含无法识别的数据。已保留浏览器本地副本，应用不会自动覆盖桌面数据文件。'
       };
@@ -200,62 +298,53 @@ export async function loadSessions(): Promise<LoadSessionsResult> {
 
     desktopPersistenceBlocked = false;
 
-    if (records.length === 0 && localSessions.length > 0) {
-      const result = await persistSessions(localSessions);
-      if (!result.warning) clearLocalSessions();
-      return { sessions: localSessions, warning: result.warning };
+    if (!hasSnapshotData(snapshot) && hasSnapshotData(localSnapshot)) {
+      const result = await persistStudyData(localSnapshot);
+      if (!result.warning) clearLocalStudyData();
+      return { ...localSnapshot, warning: result.warning };
     }
 
-    if (records.length > 0) clearLocalSessions();
-    return { sessions: records, warning: null };
+    if (hasSnapshotData(snapshot)) clearLocalStudyData();
+    return { ...snapshot, warning: null };
   } catch (error) {
     desktopPersistenceBlocked = true;
     return {
-      sessions: localSessions,
+      ...localSnapshot,
       warning: createDesktopWarning('读取', error)
     };
   }
 }
 
-function isFocusSession(value: FocusSession | null): value is FocusSession {
-  return value !== null;
-}
-
-async function persistSnapshot(snapshot: FocusSession[]): Promise<StorageResult> {
+async function persistSnapshot(snapshot: StudyDataSnapshot): Promise<StorageResult> {
+  const normalizedSnapshot = normalizeSnapshot(snapshot);
   const invoke = await getInvoke();
   if (!invoke) {
-    return writeLocalSessions(snapshot)
+    return writeLocalStudyData(normalizedSnapshot)
       ? { warning: null }
       : { warning: '无法保存浏览器本地学习记录。' };
   }
 
   if (desktopPersistenceBlocked) {
     return saveFallback(
-      snapshot,
+      normalizedSnapshot,
       '桌面学习记录仍不可用。已保存到浏览器本地副本，应用不会自动覆盖桌面数据文件。'
     );
   }
 
-  const records = snapshot.map(toStudyRecord);
-  const data = {
-    records,
-    total_seconds: records.reduce((total, record) => total + record.duration_seconds, 0)
-  };
-
   try {
-    await invoke('save_study_data', { data });
+    await invoke('save_study_data', { data: createDataPayload(normalizedSnapshot) });
     desktopPersistenceBlocked = false;
-    clearLocalSessions();
+    clearLocalStudyData();
     return { warning: null };
   } catch (error) {
     desktopPersistenceBlocked = true;
-    return saveFallback(snapshot, createDesktopWarning('保存', error));
+    return saveFallback(normalizedSnapshot, createDesktopWarning('保存', error));
   }
 }
 
-export function persistSessions(sessions: FocusSession[]): Promise<StorageResult> {
-  const snapshot = sessions.map((session) => ({ ...session }));
-  const task = writeQueue.catch(() => undefined).then(() => persistSnapshot(snapshot));
+export function persistStudyData(snapshot: StudyDataSnapshot): Promise<StorageResult> {
+  const copy = normalizeSnapshot(snapshot);
+  const task = writeQueue.catch(() => undefined).then(() => persistSnapshot(copy));
 
   writeQueue = task.then(
     () => undefined,
@@ -264,3 +353,15 @@ export function persistSessions(sessions: FocusSession[]): Promise<StorageResult
 
   return task;
 }
+
+// Compatibility helpers for callers that have not yet moved to the project-aware snapshot API.
+export async function loadSessions(): Promise<LoadSessionsResult> {
+  const result = await loadStudyData();
+  return { sessions: result.sessions, warning: result.warning };
+}
+
+export async function persistSessions(sessions: FocusSession[]): Promise<StorageResult> {
+  const current = await loadStudyData();
+  return persistStudyData({ sessions, projects: current.projects });
+}
+

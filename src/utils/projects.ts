@@ -70,6 +70,10 @@ function normalizeProject(value: unknown): StudyProject | null {
   };
 }
 
+export function isStudyProject(value: unknown): value is StudyProject {
+  return normalizeProject(value) !== null;
+}
+
 function projectNameKey(name: string): string {
   return name.trim().toLocaleLowerCase();
 }

@@ -10,6 +10,8 @@ use uuid::Uuid;
 struct SessionRecord {
     id: String,
     subject: String,
+    #[serde(rename = "projectId", default)]
+    project_id: Option<String>,
     #[serde(rename = "startedAt")]
     started_at: i64,
     #[serde(rename = "endedAt")]
@@ -32,9 +34,22 @@ fn default_session_mode() -> String {
     "focus".to_string()
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ProjectRecord {
+    id: String,
+    name: String,
+    color: String,
+    #[serde(rename = "createdAt")]
+    created_at: i64,
+    #[serde(rename = "archivedAt", default)]
+    archived_at: Option<i64>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 struct StudyData {
     records: Vec<SessionRecord>,
+    #[serde(default)]
+    projects: Vec<ProjectRecord>,
     total_seconds: u64,
 }
 

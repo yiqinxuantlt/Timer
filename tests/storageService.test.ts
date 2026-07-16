@@ -1,10 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import type { FocusSession } from '../src/types';
-import { loadSessions, normalizeRecord, persistSessions } from '../src/services/storageService';
+import type { FocusSession, StudyProject } from '../src/types';
+import {
+  loadStudyData,
+  normalizeRecord,
+  persistStudyData
+} from '../src/services/storageService';
+import { DEFAULT_PROJECT } from '../src/utils/projects';
+
+const englishProject: StudyProject = {
+  id: 'project-english',
+  name: '英语阅读',
+  color: 'violet',
+  createdAt: 1,
+  archivedAt: null
+};
 
 const browserSession: FocusSession = {
   id: 'browser-session',
   subject: '英语',
+  projectId: englishProject.id,
   startedAt: 1_000,
   endedAt: 61_000,
   duration: 60_000,
@@ -30,7 +44,8 @@ describe('storage record validation', () => {
       duration: 60_000,
       targetDuration: 3_600_000,
       status: 'completed',
-      mode: 'focus'
+      mode: 'focus',
+      projectId: null
     });
   });
 
@@ -46,11 +61,47 @@ describe('storage record validation', () => {
     ).toBeNull();
   });
 
-  it('persists and loads sessions through the browser fallback', async () => {
-    await expect(persistSessions([browserSession])).resolves.toEqual({ warning: null });
-    expect(localStorage.getItem('study-timer-sessions')).not.toBeNull();
-    await expect(loadSessions()).resolves.toEqual({
+  it('persists and loads a project-linked study snapshot through the browser fallback', async () => {
+    await expect(
+      persistStudyData({
+        sessions: [browserSession],
+        projects: [DEFAULT_PROJECT, englishProject]
+      })
+    ).resolves.toEqual({ warning: null });
+
+    expect(JSON.parse(localStorage.getItem('study-timer-sessions') ?? '{}')).toMatchObject({
+      records: [expect.objectContaining({ projectId: englishProject.id })],
+      projects: expect.arrayContaining([expect.objectContaining({ id: englishProject.id })])
+    });
+    await expect(loadStudyData()).resolves.toEqual({
       sessions: [browserSession],
+      projects: [DEFAULT_PROJECT, englishProject],
+      warning: null
+    });
+  });
+
+  it('loads legacy browser arrays without assigning old records to a new project', async () => {
+    localStorage.setItem(
+      'study-timer-sessions',
+      JSON.stringify([
+        {
+          id: 'legacy-browser',
+          subject: '数学',
+          startedAt: 1_000,
+          endedAt: 61_000,
+          duration: 60_000,
+          targetDuration: 1_800_000,
+          status: 'completed',
+          mode: 'focus'
+        }
+      ])
+    );
+
+    await expect(loadStudyData()).resolves.toEqual({
+      sessions: [
+        expect.objectContaining({ id: 'legacy-browser', subject: '数学', projectId: null })
+      ],
+      projects: [DEFAULT_PROJECT],
       warning: null
     });
   });

@@ -1,42 +1,112 @@
 # 学习计时器
 
-一款简洁的 Windows 桌面专注计时器，使用 React、TypeScript、Zustand 和 Tauri 2 构建。
+一款轻量、置顶、离线优先的 Windows 桌面专注计时器。它打开即用，帮助你记录学习时长，同时尽量不打扰当前工作流。
 
-## 功能
+项目使用 React + TypeScript 构建界面，使用 Zustand 管理状态，并通过 Tauri 2 + Rust 提供桌面能力和本地数据持久化。
 
-- 基于时间戳的开始、暂停、继续、停止和自动完成
-- 15 分钟至 2 小时的目标时长预设
-- 今日专注时长、累计时长和连续学习天数
-- 历史记录查看、删除、清空和 JSON 导出
-- Tauri 桌面通知、全局快捷键、窗口置顶和紧凑模式
-- 浏览器开发环境使用 localStorage，桌面环境使用 Rust 原子写入 JSON
+## 功能概览
 
-## 开发
+- **准确计时**：开始、暂停、继续、停止和自动完成，计时基于时间戳计算，不依赖递减秒数。
+- **目标时长**：支持 15 分钟、30 分钟、45 分钟、1 小时、1.5 小时和 2 小时预设。
+- **学习统计**：查看今日专注时长、累计专注时长和连续学习天数。
+- **历史记录**：按日期查看会话，支持删除单条记录、清空记录和导出 JSON。
+- **桌面体验**：无边框透明窗口、默认置顶、自定义标题栏、紧凑模式和桌面通知。
+- **全局快捷键**：可选启用 `Ctrl+Alt+Space` 播放/暂停、`Ctrl+Alt+S` 停止。
+- **数据可靠性**：桌面端使用 Rust 原子写入 JSON；浏览器预览使用 localStorage，便于开发和故障回退。
 
-前置要求：Node.js 18+；运行完整桌面应用和打包还需要 Rust 工具链。
+## 截图
+
+当前仓库暂未提交截图。桌面窗口默认尺寸为 `320 × 420`，紧凑模式为 `220 × 140`。
+
+## 快速开始
+
+### 环境要求
+
+- Windows 10/11
+- Node.js 18+
+- npm
+- Rust stable 工具链（仅在运行 Tauri 桌面开发或生产打包时需要）
+- Windows 桌面运行需要可用的 WebView2 Runtime
+
+### 安装依赖
 
 ```bash
 npm install
-
-# 浏览器预览
-npm run dev
-
-# Tauri 桌面开发
-npm run tauri:dev
-
-# 前端生产构建
-npm run build
-
-# 完整桌面应用构建
-npm run tauri:build
 ```
 
-## 目录结构
+### 启动和构建
+
+```bash
+# 仅启动浏览器预览，不需要 Rust
+npm run dev
+
+# 启动完整 Tauri 桌面应用
+npm run tauri:dev
+
+# 构建前端生产文件
+npm run build
+
+# 构建完整桌面安装包
+npm run tauri:build
+
+# 只构建 Windows NSIS 安装包
+npm run tauri -- build --bundles nsis
+```
+
+构建产物位于 `src-tauri/target/release/bundle/`。Windows NSIS 安装包通常位于 `src-tauri/target/release/bundle/nsis/`。
+
+## 使用说明
+
+1. 启动应用后输入科目或任务名称，选择目标时长。
+2. 点击开始按钮进入专注状态；需要休息时点击暂停，回来后点击继续。
+3. 点击停止会结束当前会话。持续时间达到 60 秒的会话才会保存到历史记录和统计数据。
+4. 达到目标时长后，计时器会自动完成；启用通知时，桌面会显示完成提醒。
+5. 打开设置可以切换置顶、通知、全局快捷键和紧凑模式。
+6. 关闭窗口时，如果正在计时，应用会先结束并保存当前有效会话，再关闭窗口。
+
+### 快捷键
+
+| 快捷键 | 操作 | 说明 |
+| --- | --- | --- |
+| `Ctrl+Alt+Space` | 播放 / 暂停 / 继续 | 需要在设置中启用全局快捷键 |
+| `Ctrl+Alt+S` | 停止并保存 | 仅在计时或暂停状态下生效 |
+
+### 窗口模式
+
+| 模式 | 尺寸 | 适用场景 |
+| --- | --- | --- |
+| 普通模式 | `320 × 420` | 查看统计、设置和历史记录 |
+| 紧凑模式 | `220 × 140` | 只保留计时环和核心控制，减少屏幕占用 |
+
+窗口默认置顶，可通过标题栏拖动、最小化、切换紧凑模式和关闭应用。
+
+## 数据与隐私
+
+- 应用不需要账户，不提供云同步，也不上传学习记录。
+- 桌面端长期数据保存在 `%APPDATA%/study-timer/study_data.json`。
+- 浏览器预览数据保存在名为 `study-timer-sessions` 的 localStorage 项中；设置和计时恢复状态分别保存在 `study-timer-settings` 与 `study-timer-state` 中。
+- 桌面端写入采用“临时文件 + 原子替换”，降低应用异常退出时的数据损坏风险。
+- 只有持续至少 60 秒的有效会话会进入历史和统计；今日时长按会话开始日期计算，跨午夜会话不会拆分。
+
+## 技术架构
+
+```text
+React / TypeScript / Vite
+        │
+        ├── Zustand：计时器、统计、设置状态
+        ├── localStorage：浏览器预览与降级存储
+        │
+        └── Tauri 2 IPC
+                │
+                └── Rust：本地 JSON 读取、原子写入、窗口与系统能力
+```
+
+主要目录：
 
 ```text
 src/
-├── components/       # 计时环、控制区、设置、历史和窗口标题栏
-├── hooks/            # 计时刷新、快捷键和窗口生命周期
+├── components/       # 计时环、控制区、设置、历史和标题栏
+├── hooks/            # 计时刷新、快捷键、窗口生命周期
 ├── services/         # 持久化、通知和窗口 API
 ├── stores/           # timerStore、statsStore、settingsStore
 ├── styles/           # 全局设计 token 和组件样式
@@ -48,34 +118,19 @@ src-tauri/
 └── tauri.conf.json   # 窗口、CSP 和打包配置
 ```
 
-## 数据规则
+### 计时实现原则
 
-- 只有完成且持续至少 60 秒的会话会进入统计和历史记录。
-- 今日时长按会话开始日期计算，跨午夜会话不会拆分。
-- 连续学习天数必须从今天开始连续向前计算。
-- 桌面端数据位于 `%APPDATA%/study-timer/study_data.json`。
-- 浏览器端数据位于 localStorage，便于开发预览和故障回退。
-
-## 计时实现
-
-计时器永远从时间戳计算经过时长，不递减一个可能漂移的秒数：
+计时器通过时间戳计算经过时长：
 
 ```typescript
 const elapsed = Date.now() - startedAt - cumulativePausedDuration;
 ```
 
-这可以正确应对窗口后台、系统休眠、暂停和应用重启恢复。
+因此窗口切到后台、系统休眠或发生渲染节流时，计时仍能基于真实时间恢复，不会因为 `setInterval` 延迟而逐渐漂移。
 
-## 窗口
+## 开发检查
 
-| 模式 | 尺寸 |
-| --- | --- |
-| 普通模式 | 320 × 420 |
-| 紧凑模式 | 220 × 140 |
-
-窗口无系统装饰、默认置顶，并通过自定义标题栏完成拖拽、最小化和关闭。
-
-## 质量检查
+提交代码前建议运行：
 
 ```bash
 npm run typecheck
@@ -83,8 +138,43 @@ npm run build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-`npm run lint` 和格式化脚本已保留在 package scripts 中；如果依赖未安装完整，请先运行 `npm install`。
+可选的代码质量检查：
+
+```bash
+npm run lint
+npm run format:check
+cargo fmt --all -- --check
+```
+
+如果提示 `eslint`、`prettier` 或 `rustfmt` 不存在，请先安装完整 npm 依赖或 Rust `rustfmt` 组件。
+
+## 常见问题
+
+### 应用打开后无法关闭
+
+请确认使用的是最新构建的安装包。无边框窗口的关闭流程需要 Tauri 的 `destroy` 权限；旧安装包可能仍包含旧的关闭处理逻辑。重新构建并安装最新 NSIS 包后，活动会话会先保存，再关闭窗口。
+
+### `tauri:dev` 或 `tauri:build` 启动失败
+
+确认 `cargo --version` 可用，并在项目根目录重新执行 `npm install`。只想检查前端时，可以使用 `npm run dev` 或 `npm run build`。
+
+### 历史记录没有出现
+
+少于 60 秒的会话会被视为无效，不会写入历史。桌面端可以检查 `%APPDATA%/study-timer/study_data.json` 是否存在；浏览器预览则检查 localStorage。
+
+## 当前边界
+
+项目刻意保持轻量，当前不包含账户系统、云同步、多窗口、番茄钟间隔模式和复杂统计图表。后续功能会优先围绕本地专注记录和桌面使用体验展开。
+
+## 贡献
+
+欢迎提交 Issue 或 Pull Request。建议：
+
+1. 先说明问题、使用环境和复现步骤。
+2. 保持计时逻辑的时间戳方案，不使用递减计数器替代它。
+3. 修改窗口、权限或数据结构时同步更新对应配置和文档。
+4. 提交前运行类型检查、前端构建和 Rust 检查。
 
 ## 许可证
 
-MIT
+[MIT License](LICENSE)

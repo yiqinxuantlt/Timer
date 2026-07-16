@@ -35,6 +35,7 @@ export function useWindowManagement(): boolean {
     if (!inTauri) return;
 
     let disposed = false;
+    let closeInProgress = false;
     let unlisten: (() => void) | null = null;
 
     const setupCloseHandler = async () => {
@@ -43,11 +44,32 @@ export function useWindowManagement(): boolean {
         if (disposed) return;
 
         unlisten = await appWindow.onCloseRequested(async (event) => {
+          if (closeInProgress) return;
+
           const timer = useTimerStore.getState();
           if ((timer.status === 'RUNNING' || timer.status === 'PAUSED') && timer.startedAt) {
             event.preventDefault();
-            await timer.stop(true);
-            await appWindow.destroy();
+            closeInProgress = true;
+
+            try {
+              await timer.stop(true);
+            } catch (error) {
+              console.error('Failed to save the active session before closing:', error);
+            }
+
+            try {
+              await appWindow.destroy();
+            } catch (error) {
+              console.error('Failed to destroy the window after close request:', error);
+
+              // If destroy is unavailable on an older build, allow a second close
+              // request to fall through instead of trapping the window forever.
+              try {
+                await appWindow.close();
+              } catch (fallbackError) {
+                console.error('Failed to close the window after destroy failed:', fallbackError);
+              }
+            }
           }
         });
       } catch (error) {

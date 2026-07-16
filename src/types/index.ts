@@ -1,5 +1,15 @@
 export type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
 export type SessionStatus = 'completed' | 'cancelled';
+export type TimerMode = 'focus' | 'pomodoro';
+export type PomodoroPhase = 'focus' | 'shortBreak' | 'longBreak';
+export type SessionMode = 'focus' | 'pomodoro';
+
+export interface PomodoroConfig {
+  focusDuration: number;
+  shortBreakDuration: number;
+  longBreakDuration: number;
+  cyclesBeforeLongBreak: number;
+}
 
 export interface TimerState {
   status: TimerStatus;
@@ -19,6 +29,7 @@ export interface FocusSession {
   duration: number;
   targetDuration: number;
   status: SessionStatus;
+  mode: SessionMode;
 }
 
 export interface StudyRecord {
@@ -29,6 +40,7 @@ export interface StudyRecord {
   duration_seconds: number;
   targetDuration: number;
   status: SessionStatus;
+  mode: SessionMode;
 }
 
 export interface StudyData {

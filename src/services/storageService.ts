@@ -16,6 +16,7 @@ interface RawStudyRecord {
   duration_seconds?: unknown;
   targetDuration?: unknown;
   status?: unknown;
+  mode?: unknown;
 }
 
 interface RawStudyData {
@@ -66,7 +67,12 @@ function normalizeRecord(record: RawStudyRecord): FocusSession | null {
   const durationSeconds = toNumber(record.duration_seconds, NaN);
   const duration = Number.isFinite(rawDuration) ? rawDuration : durationSeconds * 1000;
 
-  if (!id || !Number.isFinite(startedAt) || !Number.isFinite(endedAt) || !Number.isFinite(duration)) {
+  if (
+    !id ||
+    !Number.isFinite(startedAt) ||
+    !Number.isFinite(endedAt) ||
+    !Number.isFinite(duration)
+  ) {
     return null;
   }
 
@@ -78,6 +84,7 @@ function normalizeRecord(record: RawStudyRecord): FocusSession | null {
     duration,
     targetDuration,
     status: toStatus(record.status),
+    mode: record.mode === 'pomodoro' ? 'pomodoro' : 'focus'
   };
 }
 
@@ -111,6 +118,7 @@ function toStudyRecord(session: FocusSession): StudyRecord {
     duration_seconds: Math.floor(session.duration / 1000),
     targetDuration: session.targetDuration,
     status: session.status,
+    mode: session.mode
   };
 }
 
@@ -144,7 +152,10 @@ export async function loadSessions(): Promise<FocusSession[]> {
   try {
     const data = await invoke<RawStudyData>('get_study_data');
     const records = Array.isArray(data.records)
-      ? data.records.filter(isRecord).map((record) => normalizeRecord(record)).filter(isFocusSession)
+      ? data.records
+          .filter(isRecord)
+          .map((record) => normalizeRecord(record))
+          .filter(isFocusSession)
       : [];
 
     if (records.length === 0 && localSessions.length > 0) {
@@ -167,30 +178,32 @@ function isFocusSession(value: FocusSession | null): value is FocusSession {
 export function persistSessions(sessions: FocusSession[]): Promise<void> {
   const snapshot = sessions.map((session) => ({ ...session }));
 
-  writeQueue = writeQueue.catch(() => undefined).then(async () => {
-    try {
-      const invoke = await getInvoke();
-      if (!invoke) {
-        writeLocalSessions(snapshot);
-        return;
-      }
-
-      const records = snapshot.map(toStudyRecord);
-      const data = {
-        records,
-        total_seconds: records.reduce((total, record) => total + record.duration_seconds, 0),
-      };
-
+  writeQueue = writeQueue
+    .catch(() => undefined)
+    .then(async () => {
       try {
-        await invoke('save_study_data', { data });
-        clearLocalSessions();
-      } catch {
-        writeLocalSessions(snapshot);
+        const invoke = await getInvoke();
+        if (!invoke) {
+          writeLocalSessions(snapshot);
+          return;
+        }
+
+        const records = snapshot.map(toStudyRecord);
+        const data = {
+          records,
+          total_seconds: records.reduce((total, record) => total + record.duration_seconds, 0)
+        };
+
+        try {
+          await invoke('save_study_data', { data });
+          clearLocalSessions();
+        } catch {
+          writeLocalSessions(snapshot);
+        }
+      } catch (error) {
+        console.error('Failed to persist study sessions:', error);
       }
-    } catch (error) {
-      console.error('Failed to persist study sessions:', error);
-    }
-  });
+    });
 
   return writeQueue;
 }

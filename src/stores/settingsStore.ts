@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { AppSettings } from '../types';
+import type { AppSettings, PomodoroConfig } from '../types';
+import { DEFAULT_POMODORO_CONFIG, normalizePomodoroConfig } from '../utils/pomodoro';
 
 interface SettingsState extends AppSettings {
   setDefaultTargetDuration: (ms: number) => void;
+  setPomodoroConfig: (update: Partial<PomodoroConfig>) => void;
+  resetPomodoroConfig: () => void;
   toggleAlwaysOnTop: () => void;
   toggleNotification: () => void;
   toggleGlobalShortcuts: () => void;
@@ -14,6 +17,7 @@ interface SettingsState extends AppSettings {
 interface PersistedSettings {
   defaultTargetDuration?: unknown;
   targetDuration?: unknown;
+  pomodoroConfig?: unknown;
   alwaysOnTop?: unknown;
   notificationEnabled?: unknown;
   globalShortcutsEnabled?: unknown;
@@ -23,11 +27,12 @@ interface PersistedSettings {
 
 const defaultSettings: AppSettings = {
   defaultTargetDuration: 3_600_000,
+  pomodoroConfig: DEFAULT_POMODORO_CONFIG,
   alwaysOnTop: true,
   notificationEnabled: true,
   globalShortcutsEnabled: false,
   recentSubjects: [],
-  compactMode: false,
+  compactMode: false
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -48,7 +53,9 @@ function getNumber(value: unknown, fallback: number): number {
 }
 
 function getSubjects(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((subject): subject is string => typeof subject === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((subject): subject is string => typeof subject === 'string')
+    : [];
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -59,10 +66,18 @@ export const useSettingsStore = create<SettingsState>()(
       setDefaultTargetDuration: (ms) => {
         if (ms > 0) set({ defaultTargetDuration: ms });
       },
+      setPomodoroConfig: (update) => {
+        set({
+          pomodoroConfig: normalizePomodoroConfig({
+            ...get().pomodoroConfig,
+            ...update
+          })
+        });
+      },
+      resetPomodoroConfig: () => set({ pomodoroConfig: DEFAULT_POMODORO_CONFIG }),
       toggleAlwaysOnTop: () => set({ alwaysOnTop: !get().alwaysOnTop }),
       toggleNotification: () => set({ notificationEnabled: !get().notificationEnabled }),
-      toggleGlobalShortcuts: () =>
-        set({ globalShortcutsEnabled: !get().globalShortcutsEnabled }),
+      toggleGlobalShortcuts: () => set({ globalShortcutsEnabled: !get().globalShortcutsEnabled }),
       toggleCompactMode: () => set({ compactMode: !get().compactMode }),
 
       addRecentSubject: (subject) => {
@@ -73,7 +88,7 @@ export const useSettingsStore = create<SettingsState>()(
           (item) => item.toLowerCase() !== trimmed.toLowerCase()
         );
         set({ recentSubjects: [trimmed, ...filtered].slice(0, 5) });
-      },
+      }
     }),
     {
       name: 'study-timer-settings',
@@ -86,6 +101,9 @@ export const useSettingsStore = create<SettingsState>()(
             state.defaultTargetDuration ?? state.targetDuration,
             defaultSettings.defaultTargetDuration
           ),
+          pomodoroConfig: normalizePomodoroConfig(
+            isRecord(state.pomodoroConfig) ? (state.pomodoroConfig as Partial<PomodoroConfig>) : {}
+          ),
           alwaysOnTop: getBoolean(state.alwaysOnTop, defaultSettings.alwaysOnTop),
           notificationEnabled: getBoolean(
             state.notificationEnabled,
@@ -96,9 +114,9 @@ export const useSettingsStore = create<SettingsState>()(
             defaultSettings.globalShortcutsEnabled
           ),
           recentSubjects: getSubjects(state.recentSubjects),
-          compactMode: getBoolean(state.compactMode, defaultSettings.compactMode),
+          compactMode: getBoolean(state.compactMode, defaultSettings.compactMode)
         };
-      },
+      }
     }
   )
 );

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Play, Pause, Square } from 'lucide-react';
+import { Check, Play, Pause, Square } from 'lucide-react';
 import { useTimerStore } from '../stores/timerStore';
 import styles from './Controls.module.css';
 
@@ -13,8 +13,17 @@ function Controls({ size = 'normal' }: ControlsProps) {
   const pause = useTimerStore((state) => state.pause);
   const resume = useTimerStore((state) => state.resume);
   const stop = useTimerStore((state) => state.stop);
+  const confirmPomodoroPhase = useTimerStore((state) => state.confirmPomodoroPhase);
+  const pomodoroWaitingForConfirmation = useTimerStore(
+    (state) => state.pomodoroWaitingForConfirmation
+  );
 
   const handleStart = () => {
+    if (pomodoroWaitingForConfirmation) {
+      confirmPomodoroPhase();
+      return;
+    }
+
     if (status === 'IDLE' || status === 'COMPLETED') {
       start();
     } else if (status === 'PAUSED') {
@@ -29,15 +38,15 @@ function Controls({ size = 'normal' }: ControlsProps) {
   };
 
   const handleStop = () => {
-    if (status === 'RUNNING' || status === 'PAUSED') {
+    if (status === 'RUNNING' || status === 'PAUSED' || pomodoroWaitingForConfirmation) {
       void stop(true);
     }
   };
 
-  const isIdle = status === 'IDLE' || status === 'COMPLETED';
+  const isIdle = (status === 'IDLE' || status === 'COMPLETED') && !pomodoroWaitingForConfirmation;
   const isRunning = status === 'RUNNING';
   const isPaused = status === 'PAUSED';
-  const isActive = isRunning || isPaused;
+  const isActive = isRunning || isPaused || pomodoroWaitingForConfirmation;
 
   const containerClass = size === 'compact' ? styles.containerCompact : styles.container;
   const buttonIconSize = size === 'compact' ? 14 : 18;
@@ -48,9 +57,21 @@ function Controls({ size = 'normal' }: ControlsProps) {
         className={`${styles.button} ${styles.buttonStart} ${isRunning ? styles.buttonStartActive : ''} ${size === 'compact' ? styles.buttonStartCompact : ''}`}
         onClick={handleStart}
         disabled={isRunning}
-        aria-label={isIdle ? '开始' : isPaused ? '继续' : '开始'}
+        aria-label={
+          pomodoroWaitingForConfirmation
+            ? '确认并继续'
+            : isIdle
+              ? '开始'
+              : isPaused
+                ? '继续'
+                : '开始'
+        }
       >
-        <Play size={buttonIconSize} fill="currentColor" />
+        {pomodoroWaitingForConfirmation ? (
+          <Check size={buttonIconSize} />
+        ) : (
+          <Play size={buttonIconSize} fill="currentColor" />
+        )}
       </button>
 
       <button

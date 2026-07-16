@@ -4,7 +4,7 @@ export const DEFAULT_POMODORO_CONFIG: PomodoroConfig = {
   focusDuration: 25 * 60 * 1000,
   shortBreakDuration: 5 * 60 * 1000,
   longBreakDuration: 15 * 60 * 1000,
-  cyclesBeforeLongBreak: 4,
+  cyclesBeforeLongBreak: 4
 };
 
 export interface PomodoroPhaseTransition {
@@ -12,10 +12,7 @@ export interface PomodoroPhaseTransition {
   round: number;
 }
 
-export function getPomodoroPhaseDuration(
-  phase: PomodoroPhase,
-  config: PomodoroConfig
-): number {
+export function getPomodoroPhaseDuration(phase: PomodoroPhase, config: PomodoroConfig): number {
   if (phase === 'shortBreak') return config.shortBreakDuration;
   if (phase === 'longBreak') return config.longBreakDuration;
   return config.focusDuration;
@@ -29,9 +26,7 @@ export function getNextPomodoroPhase(
   const cycles = Math.max(1, Math.floor(cyclesBeforeLongBreak));
 
   if (phase === 'focus') {
-    return round % cycles === 0
-      ? { phase: 'longBreak', round }
-      : { phase: 'shortBreak', round };
+    return round % cycles === 0 ? { phase: 'longBreak', round } : { phase: 'shortBreak', round };
   }
 
   if (phase === 'longBreak') return { phase: 'focus', round: 1 };
@@ -56,6 +51,6 @@ export function normalizePomodoroConfig(value: Partial<PomodoroConfig>): Pomodor
       : DEFAULT_POMODORO_CONFIG.longBreakDuration,
     cyclesBeforeLongBreak: isCycles(value.cyclesBeforeLongBreak)
       ? value.cyclesBeforeLongBreak
-      : DEFAULT_POMODORO_CONFIG.cyclesBeforeLongBreak,
+      : DEFAULT_POMODORO_CONFIG.cyclesBeforeLongBreak
   };
 }

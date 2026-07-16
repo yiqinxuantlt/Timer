@@ -13,12 +13,17 @@ export interface PomodoroConfig {
 
 export interface TimerState {
   status: TimerStatus;
+  mode: TimerMode;
   startedAt: number | null;
   targetDuration: number;
   pausedAt: number | null;
   cumulativePausedDuration: number;
   subject: string;
   completedDuration: number | null; // 完成时保留最终时长，用于显示
+  pomodoroPhase: PomodoroPhase | null;
+  pomodoroRound: number;
+  pomodoroWaitingForConfirmation: boolean;
+  pomodoroPhaseCompletedAt: number | null;
 }
 
 export interface FocusSession {
@@ -50,6 +55,7 @@ export interface StudyData {
 
 export interface AppSettings {
   defaultTargetDuration: number;
+  pomodoroConfig: PomodoroConfig;
   alwaysOnTop: boolean;
   notificationEnabled: boolean;
   globalShortcutsEnabled: boolean;

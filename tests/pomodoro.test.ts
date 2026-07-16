@@ -3,7 +3,7 @@ import {
   DEFAULT_POMODORO_CONFIG,
   getNextPomodoroPhase,
   getPomodoroPhaseDuration,
-  normalizePomodoroConfig,
+  normalizePomodoroConfig
 } from '../src/utils/pomodoro';
 
 describe('pomodoro utilities', () => {
@@ -12,15 +12,27 @@ describe('pomodoro utilities', () => {
       focusDuration: 25 * 60 * 1000,
       shortBreakDuration: 5 * 60 * 1000,
       longBreakDuration: 15 * 60 * 1000,
-      cyclesBeforeLongBreak: 4,
+      cyclesBeforeLongBreak: 4
     });
   });
 
   it('selects short and long breaks at the correct rounds', () => {
-    expect(getNextPomodoroPhase('focus', 3, 4)).toEqual({ phase: 'shortBreak', round: 3 });
-    expect(getNextPomodoroPhase('focus', 4, 4)).toEqual({ phase: 'longBreak', round: 4 });
-    expect(getNextPomodoroPhase('shortBreak', 3, 4)).toEqual({ phase: 'focus', round: 4 });
-    expect(getNextPomodoroPhase('longBreak', 4, 4)).toEqual({ phase: 'focus', round: 1 });
+    expect(getNextPomodoroPhase('focus', 3, 4)).toEqual({
+      phase: 'shortBreak',
+      round: 3
+    });
+    expect(getNextPomodoroPhase('focus', 4, 4)).toEqual({
+      phase: 'longBreak',
+      round: 4
+    });
+    expect(getNextPomodoroPhase('shortBreak', 3, 4)).toEqual({
+      phase: 'focus',
+      round: 4
+    });
+    expect(getNextPomodoroPhase('longBreak', 4, 4)).toEqual({
+      phase: 'focus',
+      round: 1
+    });
   });
 
   it('returns the configured duration for each phase', () => {

@@ -4,7 +4,7 @@ import { useTimerStore } from '../stores/timerStore';
 
 const SHORTCUTS = {
   playPause: 'Ctrl+Alt+Space',
-  stop: 'Ctrl+Alt+S',
+  stop: 'Ctrl+Alt+S'
 } as const;
 
 export function useKeyboardShortcuts(inTauri: boolean): void {
@@ -22,7 +22,8 @@ export function useKeyboardShortcuts(inTauri: boolean): void {
 
         await register(SHORTCUTS.playPause, () => {
           const timer = useTimerStore.getState();
-          if (timer.status === 'IDLE' || timer.status === 'COMPLETED') timer.start();
+          if (timer.pomodoroWaitingForConfirmation) timer.confirmPomodoroPhase();
+          else if (timer.status === 'IDLE' || timer.status === 'COMPLETED') timer.start();
           else if (timer.status === 'RUNNING') timer.pause();
           else if (timer.status === 'PAUSED') timer.resume();
         });

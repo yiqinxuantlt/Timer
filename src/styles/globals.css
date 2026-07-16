@@ -40,7 +40,9 @@
   --radius-xl: 22px;
   --radius-full: 9999px;
 
-  --font-primary: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-primary:
+    'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
   --text-xs: 11px;
   --text-sm: 12px;
@@ -115,19 +117,24 @@ button {
   overflow: hidden;
   background:
     radial-gradient(circle at 20% 0%, rgba(99, 102, 241, 0.14), transparent 42%),
-    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.1), transparent 38%),
-    var(--glass-bg);
+    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.1), transparent 38%), var(--glass-bg);
   backdrop-filter: blur(24px) saturate(165%);
   -webkit-backdrop-filter: blur(24px) saturate(165%);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.025) inset;
-  transition: border-color var(--duration-slow) var(--ease-out), box-shadow var(--duration-slow) var(--ease-out);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+  transition:
+    border-color var(--duration-slow) var(--ease-out),
+    box-shadow var(--duration-slow) var(--ease-out);
 }
 
 .app-running {
   border-color: rgba(129, 140, 248, 0.3);
-  box-shadow: var(--shadow-lg), 0 0 36px rgba(99, 102, 241, 0.12);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 36px rgba(99, 102, 241, 0.12);
 }
 
 .app-paused {
@@ -136,13 +143,19 @@ button {
 
 .app-completed {
   border-color: rgba(52, 211, 153, 0.34);
-  box-shadow: var(--shadow-lg), 0 0 36px rgba(52, 211, 153, 0.12);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 36px rgba(52, 211, 153, 0.12);
   animation: completedFlash 0.6s var(--ease-out);
 }
 
 @keyframes completedFlash {
-  0% { background-color: rgba(52, 211, 153, 0.12); }
-  100% { background-color: var(--glass-bg); }
+  0% {
+    background-color: rgba(52, 211, 153, 0.12);
+  }
+  100% {
+    background-color: var(--glass-bg);
+  }
 }
 
 .main-content {
@@ -166,6 +179,23 @@ button {
   min-height: 188px;
 }
 
+.mode-switcher-slot {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.timer-stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 0;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
@@ -176,8 +206,13 @@ button {
 }
 
 @media (resolution: 1.5dppx) {
-  .main-content { gap: var(--space-4); padding-top: var(--space-4); }
-  .timer-section { min-height: 176px; }
+  .main-content {
+    gap: var(--space-4);
+    padding-top: var(--space-4);
+  }
+  .timer-section {
+    min-height: 176px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -191,10 +226,19 @@ button {
   }
 }
 
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
 
 ::selection {
   background: rgba(129, 140, 248, 0.34);

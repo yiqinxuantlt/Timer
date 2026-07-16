@@ -17,10 +17,16 @@ struct SessionRecord {
     target_duration: u64,
     #[serde(default = "default_session_status")]
     status: String,
+    #[serde(default = "default_session_mode")]
+    mode: String,
 }
 
 fn default_session_status() -> String {
     "completed".to_string()
+}
+
+fn default_session_mode() -> String {
+    "focus".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

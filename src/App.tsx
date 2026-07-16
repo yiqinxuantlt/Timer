@@ -13,6 +13,7 @@ import TodayStats from './components/TodayStats';
 import ContextMenu from './components/ContextMenu';
 import HistoryModal from './components/HistoryModal';
 import SettingsPanel from './components/SettingsPanel';
+import ProjectManagerModal from './components/ProjectManagerModal';
 import CompactTimer from './components/CompactTimer';
 import ModeSwitcher from './components/ModeSwitcher';
 import PhaseCard from './components/PhaseCard';
@@ -35,6 +36,7 @@ function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [projectManagerOpen, setProjectManagerOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -79,6 +81,8 @@ function App() {
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const openHistory = useCallback(() => setHistoryOpen(true), []);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
+  const openProjectManager = useCallback(() => setProjectManagerOpen(true), []);
+  const closeProjectManager = useCallback(() => setProjectManagerOpen(false), []);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
   const containerClass = [
     'app-container',
@@ -93,7 +97,12 @@ function App() {
 
   return (
     <div className={containerClass} onContextMenu={handleContextMenu}>
-      <TitleBar inTauri={inTauri} onOpenSettings={openSettings} onOpenHistory={openHistory} />
+      <TitleBar
+        inTauri={inTauri}
+        onOpenSettings={openSettings}
+        onOpenHistory={openHistory}
+        onOpenProjectManager={openProjectManager}
+      />
 
       {storageWarning && (
         <p className="storage-warning" role="status" aria-live="polite">
@@ -118,6 +127,7 @@ function App() {
 
       <SettingsPanel inTauri={inTauri} isOpen={settingsOpen} onClose={closeSettings} />
       <HistoryModal isOpen={historyOpen} onClose={closeHistory} />
+      <ProjectManagerModal isOpen={projectManagerOpen} onClose={closeProjectManager} />
 
       {contextMenu && (
         <ContextMenu

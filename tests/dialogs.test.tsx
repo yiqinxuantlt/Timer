@@ -118,12 +118,12 @@ describe('dialog accessibility and browser fallback', () => {
     render(<TitleBar inTauri={false} onOpenSettings={openSettings} onOpenHistory={openHistory} />);
 
     fireEvent.click(screen.getByRole('button', { name: '设置' }));
-    fireEvent.click(screen.getByRole('button', { name: '历史记录' }));
-    fireEvent.click(screen.getByRole('button', { name: '编辑科目' }));
+    fireEvent.click(screen.getByRole('button', { name: '统计与记录' }));
+    fireEvent.click(screen.getByRole('button', { name: '选择项目' }));
 
     expect(openSettings).toHaveBeenCalledTimes(1);
     expect(openHistory).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: '编辑科目...' })).toBeVisible();
+    expect(screen.getByRole('menu', { name: '项目列表' })).toBeVisible();
     expect(screen.queryByRole('button', { name: '最小化' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '关闭' })).not.toBeInTheDocument();
   });
